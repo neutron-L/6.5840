@@ -125,7 +125,11 @@ func (c *Coordinator) Done() bool {
 	ret := false
 
 	// Your code here.
-
+	mtx.lock()
+	defer mtx.unlock()
+	if phase == EXIT {
+		ret = true
+	}
 
 	return ret
 }
