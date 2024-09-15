@@ -23,7 +23,6 @@ type ExampleReply struct {
 }
 
 // Add your RPC definitions here.
-type jobPhase string
 
 type TaskArgs struct {
 	worker_addr string
