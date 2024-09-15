@@ -24,13 +24,21 @@ type ExampleReply struct {
 
 // Add your RPC definitions here.
 
-type TaskArgs struct {
+type GetTaskArgs struct {
 	worker_addr string
 }
 
-type TaskReplay struct {
+type GetTaskReply struct {
 	task_id	int
 	phase  	jobPhase
+}
+
+
+type TaskDoneArgs struct {
+	task_id	int
+}
+
+type TaskDoneReply struct {
 }
 
 
