@@ -36,7 +36,7 @@ const EXPIRE_TIME = 10
 
 
 // Your code here -- RPC handlers for the worker to call.
-func (c *Coordinator) GetTask(args *TaskArgs, reply *TaskReplay) {
+func (c *Coordinator) GetTask(args *GetTaskArgs, reply *GetTaskReply) {
 	reply->phase = phase
 
 	if phase != EXIT {
@@ -68,6 +68,27 @@ func (c *Coordinator) GetTask(args *TaskArgs, reply *TaskReplay) {
 			}
 		}(phase, reply->task_id)
 	}
+}
+
+func (c *Coordinator) TaskDone(args *TaskDoneArgs, reply *TaskDoneReply) {
+	mtx.lock()
+	defer mtx.unlock()
+	task_id := TaskDoneArgs->task_id 
+	if hasDone[task_id] == DONE {
+		log.Fatal("task %d should be doing or undo but is %d", task_id, hasDone[task_id])
+	} else if hasDone[task_id] == UNDO {
+		return
+	}
+
+	hasDone[task_id] = DONE
+	++hasDoneNum
+	if phase == MAP && hasDoneNum == nMap {
+		phase = REDUCE
+		hasDoneNum = 0
+	} else if phase == REDUCE && hasDoneNum == nReduce {
+		phase = EXIT
+		hasDoneNum = 0
+	} 
 }
 //
 // an example RPC handler.
