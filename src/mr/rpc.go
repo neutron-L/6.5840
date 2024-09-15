@@ -36,6 +36,7 @@ type GetTaskReply struct {
 
 type TaskDoneArgs struct {
 	task_id	int
+	phase  	jobPhase
 }
 
 type TaskDoneReply struct {
