@@ -3,17 +3,72 @@ package mr
 import "log"
 import "net"
 import "os"
+import "sync"
 import "net/rpc"
 import "net/http"
 
 
+type taskStatus int
+
 type Coordinator struct {
 	// Your definitions here.
+	phase   	jobPhase
+	workers 	map[string]bool   // 记录连接过的map以及是否发送exit
+	hasDoneNum	int
+	hasDone		[]taskStatus      // 任务完成情况
 
+	mtx		sync.Mutex
 }
 
-// Your code here -- RPC handlers for the worker to call.
 
+const (
+	nMap    = 100
+	nReduce = 50
+)
+
+const (
+	UNDO = 1
+	DOING = 2
+	DONE = 3
+)
+
+const EXPIRE_TIME = 10
+
+
+// Your code here -- RPC handlers for the worker to call.
+func (c *Coordinator) GetTask(args *TaskArgs, reply *TaskReplay) {
+	reply->phase = phase
+
+	if phase != EXIT {
+		mtx.lock()
+		defer mtx.unlock()
+
+		task_num := nMap
+		if phase == REDUCE {
+			task_num = nReduce
+		}
+		for i := 0; i < task_num; ++i {
+			if !hasDone[i] {
+				reply->task_id = i
+				break
+			}
+		}
+
+		go func(p jobPhase, task_id int) {
+			tChannel := time.After(EXPIRE_TIME * time.Second) // 其内部其实是生成了一个Timer对象
+			select {
+				case <-tChannel: {
+					mtx.lock()
+					defer mtx.unlock()
+					// 任务失败
+					if p == phase && hasDone[task_id] == DOING {
+						hasDone[task_id] = UNDO
+					}
+				}
+			}
+		}(phase, reply->task_id)
+	}
+}
 //
 // an example RPC handler.
 //
