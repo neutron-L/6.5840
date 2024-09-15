@@ -1,6 +1,8 @@
 package mr
 
 import (
+	"errors"
+	// "fmt"
 	"log"
 	"net"
 	"os"
@@ -43,64 +45,81 @@ const EXPIRE_TIME = 10
 
 
 // Your code here -- RPC handlers for the worker to call.
-func (c *Coordinator) GetTask(args *GetTaskArgs, reply *GetTaskReply) {
-	reply.phase = c.phase
-	
-	reply.task_id = -1 // 如果任务doing或done,则没有任务待做
-	reply.nMap = c.nMap
-	reply.nReduce = c.nReduce
-
-	if c.phase != EXIT {
-		c.mtx.Lock()
-		defer c.mtx.Unlock()
-
-		for i := 0; i < c.task_num; i++ {
-			if c.hasDone[i] == UNDO {
-				reply.task_id = i
-				c.hasDone[i] = DOING
-				break
-			}
-		}
-		
-		if reply.task_id != -1 {
-			go func(p jobPhase, task_id int) {
-				tChannel := time.After(EXPIRE_TIME * time.Second) // 其内部其实是生成了一个Timer对象
-				select {
-					case <-tChannel: {
-						c.mtx.Lock()
-						defer c.mtx.Unlock()
-						// 任务失败
-						if p == c.phase && c.hasDone[task_id] == DOING {
-							c.hasDone[task_id] = UNDO
-						}
-					}
-				}
-			}(c.phase, reply.task_id)
-		}
+func (c *Coordinator) GetTask(args *GetTaskArgs, reply *GetTaskReply) error {
+	if c.phase == EXIT {
+		return errors.New("Exit")
 	}
-}
-
-func (c *Coordinator) TaskDone(args *TaskDoneArgs, reply *TaskDoneReply) {
+	
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
-	task_id := args.task_id 
+
+	reply.Phase = c.phase
+	
+	reply.Task_id = -1 // 如果任务doing或done,则没有任务待做
+	reply.NMap = c.nMap
+	reply.NReduce = c.nReduce
+
+	// fmt.Printf("GetTask call %s %d\n", c.phase, c.hasDoneNum)
+	
+
+	for i := 0; i < c.task_num; i++ {
+		if c.hasDone[i] == UNDO {
+			reply.Task_id = i
+			if c.phase == MAP {
+				reply.File = c.files[i]
+			}
+			c.hasDone[i] = DOING
+			break
+		}
+	}
+	
+	if reply.Task_id != -1 {
+		go func(p jobPhase, task_id int) {
+			tChannel := time.After(EXPIRE_TIME * time.Second) // 其内部其实是生成了一个Timer对象
+			select {
+				case <-tChannel: {
+					c.mtx.Lock()
+					defer c.mtx.Unlock()
+					// 任务失败
+					if p == c.phase && c.hasDone[task_id] == DOING {
+						c.hasDone[task_id] = UNDO
+					}
+				}
+			}
+		}(c.phase, reply.Task_id)
+	} 
+	// fmt.Printf("Dispatch task %d\n", reply.Task_id)
+
+	return nil
+}
+
+func (c *Coordinator) TaskDone(args *TaskDoneArgs, reply *TaskDoneReply) error {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	task_id := args.Task_id 
 
 	if c.hasDone[task_id] == DONE {
 		log.Fatal("task %d should be doing or undo but is %d", task_id, c.hasDone[task_id])
 	} else if c.hasDone[task_id] == UNDO {
-		return
+		return  errors.New("TaskDone fail")
 	}
-
 	c.hasDone[task_id] = DONE
 	c.hasDoneNum++
+	// fmt.Println("Task %v done, %v", task_id, c.hasDoneNum)
+
 	if c.phase == MAP && c.hasDoneNum == c.nMap {
 		c.phase = REDUCE
 		c.hasDoneNum = 0
 		c.task_num = c.nReduce
+		for i, _ := range c.hasDone {
+			c.hasDone[i] = UNDO
+		}
 	} else if c.phase == REDUCE && c.hasDoneNum == c.nReduce {
+		// fmt.Println("EXIT")
 		c.phase = EXIT
 		c.hasDoneNum = 0
 	} 
+	return nil
 }
 //
 // an example RPC handler.
@@ -167,6 +186,9 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 		len = c.nMap
 	}
 	c.hasDone = make([]taskStatus, len)
+	for i := 0; i < len; i++ {
+		c.hasDone[i] = UNDO
+	}
 
 	c.server()
 	return &c
