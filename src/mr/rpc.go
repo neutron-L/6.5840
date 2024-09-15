@@ -23,6 +23,16 @@ type ExampleReply struct {
 }
 
 // Add your RPC definitions here.
+type jobPhase string
+
+type TaskArgs struct {
+	worker_addr string
+}
+
+type TaskReplay struct {
+	task_id	int
+	phase  	jobPhase
+}
 
 
 // Cook up a unique-ish UNIX-domain socket name
