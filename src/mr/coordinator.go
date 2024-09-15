@@ -38,6 +38,7 @@ const EXPIRE_TIME = 10
 // Your code here -- RPC handlers for the worker to call.
 func (c *Coordinator) GetTask(args *GetTaskArgs, reply *GetTaskReply) {
 	reply->phase = phase
+	reply->task_id = -1 // 如果任务doing或done,则没有任务待做
 
 	if phase != EXIT {
 		mtx.lock()
@@ -48,25 +49,27 @@ func (c *Coordinator) GetTask(args *GetTaskArgs, reply *GetTaskReply) {
 			task_num = nReduce
 		}
 		for i := 0; i < task_num; ++i {
-			if !hasDone[i] {
+			if hasDone[i] == UNDO {
 				reply->task_id = i
 				break
 			}
 		}
-
-		go func(p jobPhase, task_id int) {
-			tChannel := time.After(EXPIRE_TIME * time.Second) // 其内部其实是生成了一个Timer对象
-			select {
-				case <-tChannel: {
-					mtx.lock()
-					defer mtx.unlock()
-					// 任务失败
-					if p == phase && hasDone[task_id] == DOING {
-						hasDone[task_id] = UNDO
+		
+		if reply->task_id != -1 {
+			go func(p jobPhase, task_id int) {
+				tChannel := time.After(EXPIRE_TIME * time.Second) // 其内部其实是生成了一个Timer对象
+				select {
+					case <-tChannel: {
+						mtx.lock()
+						defer mtx.unlock()
+						// 任务失败
+						if p == phase && hasDone[task_id] == DOING {
+							hasDone[task_id] = UNDO
+						}
 					}
 				}
-			}
-		}(phase, reply->task_id)
+			}(phase, reply->task_id)
+		}
 	}
 }
 
