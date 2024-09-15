@@ -28,17 +28,17 @@ type GetTaskArgs struct {
 }
 
 type GetTaskReply struct {
-	task_id	int
-	file 	string
-	phase  	jobPhase
-	nMap    int
-	nReduce int
+	Task_id	int
+	Phase  	jobPhase
+	File 	string
+	NMap    int
+	NReduce int
 }
 
 
 type TaskDoneArgs struct {
-	task_id	int
-	phase  	jobPhase
+	Task_id	int
+	Phase  	jobPhase
 }
 
 type TaskDoneReply struct {
