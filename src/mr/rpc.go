@@ -25,12 +25,14 @@ type ExampleReply struct {
 // Add your RPC definitions here.
 
 type GetTaskArgs struct {
-	worker_addr string
 }
 
 type GetTaskReply struct {
 	task_id	int
+	file 	string
 	phase  	jobPhase
+	nMap    int
+	nReduce int
 }
 
 
