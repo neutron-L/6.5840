@@ -4,6 +4,8 @@ import (
 	"6.5840/labrpc"
 	"crypto/rand"
 	"math/big"
+	"time"
+	// "fmt"
 )
 
 
@@ -51,7 +53,21 @@ func (ck *Clerk) Get(key string) string {
 	if ok {
 		return reply.Value
 	}
-	return ""
+
+	// 定义一个定时器，这里用time.Tick创建一个每秒触发的定时器作为示例  
+	// 注意：time.Tick不会停止，除非我们手动停止它，但这里我们使用它来模拟每次重试的间隔  
+	ticker := time.Tick(1 * time.Second)  
+  
+	// 使用for循环来管理重试逻辑  
+	for {  
+		select {  
+		case <-ticker:  
+			ok = ck.server.Call("KVServer.Get", &args, &reply)
+			if ok {
+				return reply.Value
+			}
+		}  
+	}  
 }
 
 // shared by Put and Append.
@@ -72,7 +88,21 @@ func (ck *Clerk) PutAppend(key string, value string, op string) string {
 	if ok {
 		return reply.Value
 	} 
-	return ""
+  
+	// 定义一个定时器，这里用time.Tick创建一个每秒触发的定时器作为示例  
+	// 注意：time.Tick不会停止，除非我们手动停止它，但这里我们使用它来模拟每次重试的间隔  
+	ticker := time.Tick(1 * time.Second)  
+  
+	// 使用for循环来管理重试逻辑  
+	for {  
+		select {  
+		case <-ticker:  
+			ok = ck.server.Call("KVServer."+op, &args, &reply)
+			if ok {
+				return reply.Value
+			} 
+		}  
+	}  
 }
 
 func (ck *Clerk) Put(key string, value string) {

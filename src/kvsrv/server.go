@@ -3,6 +3,7 @@ package kvsrv
 import (
 	"log"
 	"sync"
+	"strconv"
 )
 
 const Debug = false
@@ -21,8 +22,8 @@ type KVServer struct {
 	// Your definitions here.
 	Store 	map[string]string
 	Seen 	map[int64]uint32    	// 客户id->最新请求seq
-	Acks    map[int64]uint32    	// 客户端最近ack的序号
-	History map[int64]map[uint32]string 	// 历史记录
+	// Acks    map[int64]uint32    	// 客户端最近ack的序号
+	// History map[int64]map[uint32]string 	// 历史记录
 }
 
 
@@ -41,16 +42,19 @@ func (kv *KVServer) Put(args *PutAppendArgs, reply *PutAppendReply) {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
 	if _, ok := kv.Seen[args.ClientId]; !ok {
-		kv.History[args.ClientId] = make(map[uint32]string)
+		// kv.History[args.ClientId] = make(map[uint32]string)
 		kv.Seen[args.ClientId] = 0
 	} 
-	if args.Seqno > kv.Seen[args.ClientId] {
+	if args.Seqno >= kv.Seen[args.ClientId] {
 		kv.Seen[args.ClientId] = args.Seqno
-		kv.History[args.ClientId][args.Seqno] = args.Value
+		// kv.History[args.ClientId][args.Seqno] = args.Value
 		kv.Store[args.Key] = args.Value
+		reply.Value = args.Value
+	// delete(kv.History[args.ClientId], args.Seqno)
+	} else {
+		reply.Value = strconv.Itoa(int(args.Seqno)) + "-" + strconv.Itoa(int(kv.Seen[args.ClientId])) + "-" + kv.Store[args.Key]
 	}
-	reply.Value = kv.History[args.ClientId][args.Seqno]
-	delete(kv.History[args.ClientId], args.Seqno)
+	
 }
 
 func (kv *KVServer) Append(args *PutAppendArgs, reply *PutAppendReply) {
@@ -59,16 +63,18 @@ func (kv *KVServer) Append(args *PutAppendArgs, reply *PutAppendReply) {
 	defer kv.mu.Unlock()
 
 	if _, ok := kv.Seen[args.ClientId]; !ok {
-		kv.History[args.ClientId] = make(map[uint32]string)
+		// kv.History[args.ClientId] = make(map[uint32]string)
 		kv.Seen[args.ClientId] = 0
 	} 
 	if args.Seqno > kv.Seen[args.ClientId] {
 		kv.Seen[args.ClientId] = args.Seqno
-		kv.History[args.ClientId][args.Seqno] = kv.Store[args.Key]
+		// kv.History[args.ClientId][args.Seqno] = kv.Store[args.Key]
+		reply.Value = kv.Store[args.Key]
 		kv.Store[args.Key] = kv.Store[args.Key] + args.Value
-	} 
-	reply.Value = kv.History[args.ClientId][args.Seqno]
-	delete(kv.History[args.ClientId], args.Seqno)
+		// delete(kv.History[args.ClientId], args.Seqno)
+	} else {
+		reply.Value = strconv.Itoa(int(args.Seqno)) + "-" + strconv.Itoa(int(kv.Seen[args.ClientId]))
+	}
 }
 
 func StartKVServer() *KVServer {
@@ -77,8 +83,8 @@ func StartKVServer() *KVServer {
 	// You may need initialization code here.
 	kv.Store = make(map[string]string)
 	kv.Seen = make(map[int64]uint32)
-	kv.Acks = make(map[int64]uint32)
-	kv.History = make(map[int64]map[uint32]string)
+	// kv.Acks = make(map[int64]uint32)
+	// kv.History = make(map[int64]map[uint32]string)
 
 	return kv
 }
