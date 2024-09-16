@@ -1,14 +1,16 @@
 package kvsrv
 
-import "6.5840/labrpc"
-import "crypto/rand"
-import "math/big"
+import (
+	"6.5840/labrpc"
+	"crypto/rand"
+	"math/big"
+)
 
 
 type Clerk struct {
 	server *labrpc.ClientEnd
 	// You will have to modify this struct.
-	ClientId 	uint32
+	ClientId 	int64
 	Seqno	 	uint32
 }
 
@@ -23,9 +25,8 @@ func MakeClerk(server *labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
 	ck.server = server
 	// You'll have to add code here.
-	rand.Seed(time.Now().UnixNano())
-	ck.ClientId = rand.Uint32()
-	ck.Seqno = 0
+	ck.ClientId = nrand()
+	ck.Seqno = 1
 
 	return ck
 }
@@ -63,8 +64,10 @@ func (ck *Clerk) Get(key string) string {
 // arguments. and reply must be passed as a pointer.
 func (ck *Clerk) PutAppend(key string, value string, op string) string {
 	// You will have to modify this function.
-	args := PutAppendArgs{Key: key, Value: value}
+	args := PutAppendArgs{Key: key, Value: value, ClientId: ck.ClientId, Seqno: ck.Seqno}
 	reply := PutAppendReply{}
+	ck.Seqno++
+
 	ok := ck.server.Call("KVServer."+op, &args, &reply)
 	if ok {
 		return reply.Value
