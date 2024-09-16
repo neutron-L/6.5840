@@ -8,6 +8,8 @@ import "math/big"
 type Clerk struct {
 	server *labrpc.ClientEnd
 	// You will have to modify this struct.
+	ClientId 	uint32
+	Seqno	 	uint32
 }
 
 func nrand() int64 {
@@ -21,6 +23,10 @@ func MakeClerk(server *labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
 	ck.server = server
 	// You'll have to add code here.
+	rand.Seed(time.Now().UnixNano())
+	ck.ClientId = rand.Uint32()
+	ck.Seqno = 0
+
 	return ck
 }
 

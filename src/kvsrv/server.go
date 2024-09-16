@@ -20,6 +20,9 @@ type KVServer struct {
 
 	// Your definitions here.
 	Store 	map[string]string
+	Seen 	map[uint32]uint32    	// 客户id->最新请求seq
+	Acks    map[uint32]uint32    	// 客户端最近ack的序号
+	History map[uint32][]string 	// 历史记录
 }
 
 
@@ -37,6 +40,9 @@ func (kv *KVServer) Put(args *PutAppendArgs, reply *PutAppendReply) {
 	// Your code here.
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
+	if args.Seqno < kv.Seen[args.ClientId] {
+
+	}
 	kv.Store[args.Key] = args.Value
 }
 
@@ -57,5 +63,6 @@ func StartKVServer() *KVServer {
 
 	// You may need initialization code here.
 	kv.Store = make(map[string]string)
+	kv.Store = make(map[uint64]uint64)
 	return kv
 }
