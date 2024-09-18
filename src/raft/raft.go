@@ -50,6 +50,20 @@ type ApplyMsg struct {
 	SnapshotIndex int
 }
 
+// A Go object implementing log entry
+type LogEntry struct {
+	term	int32
+	command interface{}
+}
+
+type Role int32
+ 
+const (  
+    Follower    Role = iota // 0  
+    Candidate               // 1  
+    Leader                  // 2  
+)  
+
 // A Go object implementing a single Raft peer.
 type Raft struct {
 	mu        sync.Mutex          // Lock to protect shared access to this peer's state
@@ -62,6 +76,21 @@ type Raft struct {
 	// Look at the paper's Figure 2 for a description of what
 	// state a Raft server must maintain.
 
+	// Persistent state
+	// Should be updated on storage before responding to RPCs
+	currentTerm			int32
+	votedFor			int32
+	log					[]LogEntry
+
+	currentRole			Role
+	concurrentLeader	int32
+	votesReceived 		map[int32]bool
+
+	commitIndex			int32
+	lastApplied			int32
+
+	nextIndex			[]int32
+	matchIndex			[]int32
 }
 
 // return currentTerm and whether this server
@@ -192,7 +221,12 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	isLeader := true
 
 	// Your code here (3B).
-
+	index = len(rf.log)
+	rf.log = append(rf.log, LogEntry{term: rf.currentTerm, command: command})
+	term = rf.currentTerm
+	if rf.currentRole != Leader {
+		isLeader = false
+	}
 
 	return index, term, isLeader
 }
