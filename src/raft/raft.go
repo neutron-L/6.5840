@@ -318,6 +318,28 @@ func electionTimeout() int {
 	return int(1500 + (rand.Int63() % 300))
 }
 
+
+func (rf *Raft)replicateLog(follower int) {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	log_len := len(rf.log)
+
+	args := AppendEntriesArgs{Term: rf.currentTerm, LeaderId: rf.me, LeaderCommit: rf.commitIndex}
+	reply := AppendEntriesReply{}
+	
+	args.PrevLogIndex = rf.nextIndex[follower] - 1
+	if args.PrevLogIndex >= 0 {
+		args.PrevLogTerm = rf.log[args.PrevLogIndex].term 	
+	}			
+	args.entries = make([]LogEntry, log_len - rf.nextIndex[follower])
+
+	for i := rf.nextIndex[follower]; i < log_len; i++ {
+		args.entries = append(args.entries, rf.log[i])
+	}
+
+	// 开启一个协程发送并处理返回值
+}
+
 func (rf *Raft)broadcastHeartBeat() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
