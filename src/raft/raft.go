@@ -318,6 +318,19 @@ func electionTimeout() int {
 	return int(1500 + (rand.Int63() % 300))
 }
 
+func (rf *Raft)broadcastHeartBeat() {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
+	n := len(rf.peers)
+	for node := 0; node < n; node++ {
+		if node == rf.me {
+			continue
+		}
+		rf.replicateLog(node)
+	}
+}
+
 func (rf *Raft)startElection() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
@@ -363,6 +376,18 @@ func (rf *Raft)startElection() {
 						
 						// 状态发生改变
 						rft.sigChan <- struct{}{}
+
+						// 复制日志前做初始化，正好此时持有锁
+						log_len := len(rf.log)
+						n := len(rf.peers)
+						for node := 0; node < n; node++ {
+							rf.nextIndex[node] = log_len
+							rf.matchIndex[node] = 0
+
+							if node == rf.me {
+								rf.matchIndex[node] = log_len
+							}
+						}
 					}
 				}
 			} else if reply.Term > rft.currentTerm {
@@ -394,20 +419,24 @@ func (rf *Raft) ticker() {
 				select {
 				case <-timer.C:
 					rf.startElection()
-					timer.Reset(time.Duration(electionTimeout())  * time.Millisecond)
-
 				case <-rf.sigChan:
-					timer.Reset(time.Duration(electionTimeout())  * time.Millisecond)
+					// 如果成为leader
+					if _, isLeader := rf.GetState(); isLeader {
+						rf.broadcastHeartBeat()
+					}
+				
 				}
+				timer.Reset(time.Duration(electionTimeout())  * time.Millisecond)
 			} else {
 				select {
 				case <-timer.C:
 					// leader广播heartbeat消息
-					timer.Reset(time.Duration(electionTimeout())  * time.Millisecond)
+					rf.broadcastHeartBeat()
 
 				case <-rf.sigChan:
-					timer.Reset(time.Duration(electionTimeout())  * time.Millisecond)
+
 				}
+				timer.Reset(time.Duration(electionTimeout())  * time.Millisecond)
 			}
 			
 		}
