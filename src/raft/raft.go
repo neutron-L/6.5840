@@ -178,10 +178,14 @@ type RequestVoteReply struct {
 // example RequestVote RPC handler.
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (3A, 3B).
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	
 	if rf.currentTerm < args.Term {
 		rf.currentTerm = args.Term
 		rf.currentRole = Follower
 		rf.votedFor = -1
+		rf.sigChan <- struct{}{}
 	}
 
 	lastTerm := 0
@@ -371,7 +375,14 @@ func (rf *Raft) ticker() {
 					timer.Reset(time.Duration(electionTimeout())  * time.Millisecond)
 				}
 			} else {
+				select {
+				case <-timer.C:
+					// leader广播heartbeat消息
+					timer.Reset(time.Duration(electionTimeout())  * time.Millisecond)
 
+				case <-rf.sigChan:
+					timer.Reset(time.Duration(electionTimeout())  * time.Millisecond)
+				}
 			}
 			
 		}
