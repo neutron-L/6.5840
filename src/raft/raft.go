@@ -52,7 +52,7 @@ type ApplyMsg struct {
 
 // A Go object implementing log entry
 type LogEntry struct {
-	term	int32
+	term	int
 	command interface{}
 }
 
@@ -78,13 +78,13 @@ type Raft struct {
 
 	// Persistent state
 	// Should be updated on storage before responding to RPCs
-	currentTerm			int32
-	votedFor			int32
+	currentTerm			int
+	votedFor			int
 	log					[]LogEntry
 
 	currentRole			Role
-	concurrentLeader	int32
-	votesReceived 		map[int32]bool
+	concurrentLeader	int
+	votesReceived 		map[int]bool
 	votesNumber			int32
 
 	commitIndex			int32
@@ -229,7 +229,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	defer rf.mu.Unlock()
 	index = len(rf.log)
 	rf.log = append(rf.log, LogEntry{term: rf.currentTerm, command: command})
-	term = rf.currentTerm
+	term = int(rf.currentTerm)
 	if rf.currentRole != Leader {
 		isLeader = false
 	}
@@ -257,12 +257,12 @@ func (rf *Raft) killed() bool {
 }
 
 func electionTimeout() int {
-	return 1500 + (rand.Int63() % 300)
+	return int(1500 + (rand.Int63() % 300))
 }
 
 func (rf *Raft)startElection() {
-	rf.mt.Lock()
-	defer rf.mt.Unlock()
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 
 	rf.currentTerm++
 	rf.currentRole = Candidate
@@ -271,11 +271,11 @@ func (rf *Raft)startElection() {
 	rf.votesNumber = 0
 
 	lastTerm := 0
-	if len(rf.Log) > 0 {
-		lastTerm = rf.Log[0].term
+	if len(rf.log) > 0 {
+		lastTerm = rf.log[0].term
 	}
 
-	for _, node := range rf.peers {
+	for node, _ := range rf.peers {
 		if node == rf.me {
 			continue
 		}
@@ -289,21 +289,21 @@ func (rf *Raft) ticker() {
 
 		// Your code here (3A)
 		// Check if a leader election should be started.
-		timer := time.NewTimer(electionTimeout() * time.Millisecond)  
+		timer := time.NewTimer(time.Duration(electionTimeout())  * time.Millisecond)  
 		for {
 			// 读取当前状态
 			rf.mu.Lock()
 			role := rf.currentRole
-			rf.mu.Unock()
+			rf.mu.Unlock()
 
 			if (role != Leader) {
 				select {
-				case <-timer:
+				case <-timer.C:
 					rf.startElection()
-					timer.Reset(electionTimeout() * time.Millisecond)
+					timer.Reset(time.Duration(electionTimeout())  * time.Millisecond)
 
 				case <-rf.sigChan:
-					timer.Reset(electionTimeout() * time.Millisecond)
+					timer.Reset(time.Duration(electionTimeout())  * time.Millisecond)
 				}
 			} else {
 
@@ -338,17 +338,17 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	// Your initialization code here (3A, 3B, 3C).
 	rf.currentTerm = 0
 	rf.votedFor = -1
-	rf.log = make([]LogEntry)
+	rf.log = make([]LogEntry, 1)
 
 	rf.currentRole = Follower
 	rf.concurrentLeader	= -1
-	rf.votesReceived =  make(map[int32]bool)
+	rf.votesReceived =  make(map[int]bool)
 
 	rf.commitIndex = -1
 	rf.lastApplied = -1
 
-	rf.nextIndex = make([]int32)
-	rf.matchIndex = make([]int32)
+	rf.nextIndex = make([]int32, len(rf.peers))
+	rf.matchIndex = make([]int32, len(rf.peers))
 
 	rf.sigChan = make(chan struct{})
 
