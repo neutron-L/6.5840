@@ -85,13 +85,13 @@ type Raft struct {
 	currentRole			Role
 	concurrentLeader	int
 	votesReceived 		map[int]bool
-	votesNumber			int32
+	votesNumber			int
 
-	commitIndex			int32
-	lastApplied			int32
+	commitIndex			int
+	lastApplied			int
 
-	nextIndex			[]int32
-	matchIndex			[]int32
+	nextIndex			[]int
+	matchIndex			[]int
 
 	// 当状态发生变化时，如选票数足够以及角色变化，则通过其发送信号给ticker协程
 	sigChan				chan struct{}
@@ -161,12 +161,18 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 // field names must start with capital letters!
 type RequestVoteArgs struct {
 	// Your data here (3A, 3B).
+	Term			int
+	CandidateId		int
+	LastLogIndex	int
+	LastLogTerm		int
 }
 
 // example RequestVote RPC reply structure.
 // field names must start with capital letters!
 type RequestVoteReply struct {
 	// Your data here (3A).
+	Term			int
+	VoteGranted		bool
 }
 
 // example RequestVote RPC handler.
@@ -347,8 +353,8 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.commitIndex = -1
 	rf.lastApplied = -1
 
-	rf.nextIndex = make([]int32, len(rf.peers))
-	rf.matchIndex = make([]int32, len(rf.peers))
+	rf.nextIndex = make([]int, len(rf.peers))
+	rf.matchIndex = make([]int, len(rf.peers))
 
 	rf.sigChan = make(chan struct{})
 
