@@ -171,8 +171,26 @@ type RequestVoteArgs struct {
 // field names must start with capital letters!
 type RequestVoteReply struct {
 	// Your data here (3A).
-	Term			int
+	Term 			int // leader’s term
 	VoteGranted		bool
+}
+
+
+type AppendEntriesArgs struct {
+	Term 			int // leader’s term
+	LeaderId 		int // so follower can redirect clients
+	PrevLogIndex 	int // index of log entry immediately preceding
+						// new ones
+	PrevLogTerm 	int //term of prevLogIndex entry
+	entries			[]LogEntry // log entries to store (empty for heartbeat;
+							   // may send more than one for efficiency)
+	LeaderCommit 	int // leader’s commitIndex
+}
+
+
+type AppendEntriesReply struct {
+	Term			int
+	Success 		bool
 }
 
 // example RequestVote RPC handler.
@@ -180,7 +198,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (3A, 3B).
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	
+
 	if rf.currentTerm < args.Term {
 		rf.currentTerm = args.Term
 		rf.currentRole = Follower
@@ -206,6 +224,13 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	reply.Term = rf.currentTerm
 	
 }
+
+// leader复制日志到其他机器或者发送空日志作为heartbeat信息
+func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
+
+}
+
+
 
 // example code to send a RequestVote RPC to a server.
 // server is the index of the target server in rf.peers[].
