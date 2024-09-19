@@ -85,12 +85,16 @@ type Raft struct {
 	currentRole			Role
 	concurrentLeader	int32
 	votesReceived 		map[int32]bool
+	votesNumber			int32
 
 	commitIndex			int32
 	lastApplied			int32
 
 	nextIndex			[]int32
 	matchIndex			[]int32
+
+	// 当状态发生变化时，如选票数足够以及角色变化，则通过其发送信号给ticker协程
+	sigChan				chan struct{}
 }
 
 // return currentTerm and whether this server
@@ -221,6 +225,8 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	isLeader := true
 
 	// Your code here (3B).
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 	index = len(rf.log)
 	rf.log = append(rf.log, LogEntry{term: rf.currentTerm, command: command})
 	term = rf.currentTerm
@@ -250,11 +256,60 @@ func (rf *Raft) killed() bool {
 	return z == 1
 }
 
+func electionTimeout() int {
+	return 1500 + (rand.Int63() % 300)
+}
+
+func (rf *Raft)startElection() {
+	rf.mt.Lock()
+	defer rf.mt.Unlock()
+
+	rf.currentTerm++
+	rf.currentRole = Candidate
+	rf.votedFor = rf.me
+	rf.votesReceived[rf.me] = true
+	rf.votesNumber = 0
+
+	lastTerm := 0
+	if len(rf.Log) > 0 {
+		lastTerm = rf.Log[0].term
+	}
+
+	for _, node := range rf.peers {
+		if node == rf.me {
+			continue
+		}
+		// 通过协程并行发送投票请求
+	}
+
+}
+
 func (rf *Raft) ticker() {
 	for rf.killed() == false {
 
 		// Your code here (3A)
 		// Check if a leader election should be started.
+		timer := time.NewTimer(electionTimeout() * time.Millisecond)  
+		for {
+			// 读取当前状态
+			rf.mu.Lock()
+			role := rf.currentRole
+			rf.mu.Unock()
+
+			if (role != Leader) {
+				select {
+				case <-timer:
+					rf.startElection()
+					timer.Reset(electionTimeout() * time.Millisecond)
+
+				case <-rf.sigChan:
+					timer.Reset(electionTimeout() * time.Millisecond)
+				}
+			} else {
+
+			}
+			
+		}
 
 
 		// pause for a random amount of time between 50 and 350
@@ -281,6 +336,21 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.me = me
 
 	// Your initialization code here (3A, 3B, 3C).
+	rf.currentTerm = 0
+	rf.votedFor = -1
+	rf.log = make([]LogEntry)
+
+	rf.currentRole = Follower
+	rf.concurrentLeader	= -1
+	rf.votesReceived =  make(map[int32]bool)
+
+	rf.commitIndex = -1
+	rf.lastApplied = -1
+
+	rf.nextIndex = make([]int32)
+	rf.matchIndex = make([]int32)
+
+	rf.sigChan = make(chan struct{})
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
