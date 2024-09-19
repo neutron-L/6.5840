@@ -178,6 +178,29 @@ type RequestVoteReply struct {
 // example RequestVote RPC handler.
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (3A, 3B).
+	if rf.currentTerm < args.Term {
+		rf.currentTerm = args.Term
+		rf.currentRole = Follower
+		rf.votedFor = -1
+	}
+
+	lastTerm := 0
+	if len(rf.log) > 0 {
+		lastTerm = rf.log[len(rf.log) - 1].term
+	}
+	logOk := false
+	if args.LastLogTerm > lastTerm || 
+		(args.LastLogTerm == lastTerm && args.LastLogIndex + 1 >= len(rf.log)) {
+		logOk = true
+	}
+
+	reply.VoteGranted = false
+	if rf.currentTerm == args.Term && logOk && (rf.votedFor == -1 || rf.votedFor == args.CandidateId) {
+		rf.votedFor = args.CandidateId
+		reply.VoteGranted = true
+	}
+	reply.Term = rf.currentTerm
+	
 }
 
 // example code to send a RequestVote RPC to a server.
@@ -274,7 +297,7 @@ func (rf *Raft)startElection() {
 	rf.currentRole = Candidate
 	rf.votedFor = rf.me
 	rf.votesReceived[rf.me] = true
-	rf.votesNumber = 0
+	rf.votesNumber = 1
 
 	lastTerm := 0
 	if len(rf.log) > 0 {
@@ -286,6 +309,42 @@ func (rf *Raft)startElection() {
 			continue
 		}
 		// 通过协程并行发送投票请求
+		go func(server int,term int, candidateId int, lastLogIndex int, lastLogTerm int, rft *Raft) {
+			args := RequestVoteArgs{Term: term, CandidateId: candidateId, LastLogIndex: lastLogIndex, LastLogTerm: lastLogTerm}
+			reply := RequestVoteReply{}
+			ok := rft.sendRequestVote(server, &args, &reply)
+
+			if !ok {
+				return
+			}
+
+			rft.mu.Lock()
+			defer rft.mu.Unlock()
+
+			// 不仅需要调用成功且得到投票，还需要判断是否是当前任期内发起的vote
+			if rft.currentRole == Candidate && reply.VoteGranted && reply.Term == rft.currentTerm {
+				if !rft.votesReceived[server] {
+					rft.votesReceived[server] = true
+					rft.votesNumber++
+					if rft.votesNumber >= (len(rft.log) + 1) / 2 {
+						rft.currentRole = Leader
+						rft.concurrentLeader = rft.me
+						rft.votesNumber = 0
+
+						
+						// 状态发生改变
+						rft.sigChan <- struct{}{}
+					}
+				}
+			} else if reply.Term > rft.currentTerm {
+				rft.currentTerm = reply.Term
+				rft.currentRole = Follower
+				rft.votesNumber = 0
+				
+				// 状态发生变化
+				rft.sigChan <- struct{}{}
+			}
+		}(node, rf.currentTerm, rf.me, len(rf.log) - 1, lastTerm, rf)
 	}
 
 }
