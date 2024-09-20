@@ -83,8 +83,8 @@ type Raft struct {
 	log					[]LogEntry
 
 	currentRole			Role
-	currentLeader	int
-	votesReceived 		map[int]bool
+	currentLeader		int
+	votesReceived 		[]bool
 	votesNumber			int
 
 	commitIndex			int
@@ -230,12 +230,12 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	if args.Term > rf.currentTerm {
+	if rf.currentTerm < args.Term  {
 		rf.currentTerm = args.Term
 		rf.votedFor = -1
 	}
 
-	if args.Term == rf.currentTerm {
+	if rf.currentTerm == args.Term {
 		rf.currentRole = Follower
 		rf.currentLeader = args.LeaderId
 		DPrintf("T %d: server %d(%d) be follower to %d\n", rf.currentTerm, rf.me, rf.currentRole, rf.currentLeader)
@@ -246,7 +246,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	log_len := len(rf.log)
 	logOk := (log_len > args.PrevLogIndex) && (args.PrevLogIndex == -1 || rf.log[args.PrevLogIndex].Term <= args.PrevLogTerm)
 
-	if args.Term == rf.currentTerm && logOk {
+	if rf.currentTerm == args.Term && logOk {
 		// 复制log
 		suffix_len := len(args.Entries)
 		if args.PrevLogIndex >= 0 && suffix_len > 0 {
@@ -276,7 +276,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		reply.Term = rf.currentTerm
 		reply.Success = true
 	} else {
-		if args.Term == rf.currentTerm {
+		if rf.currentTerm == args.Term {
 			if log_len <= args.PrevLogIndex {
 				reply.SuggestIndex = log_len 
 			} else {
@@ -383,11 +383,11 @@ func (rf *Raft) killed() bool {
 }
 
 func electionTimeout() int {
-	return int(400 + (rand.Int63() % 400))
+	return int(300 + (rand.Int63() % 300))
 }
 
 func heartbeatTimeout() int {
-	return 100
+	return int(10 + (rand.Int63() % 90))
 }
 
 func (rf *Raft)replicateLog(follower int) {
@@ -395,7 +395,7 @@ func (rf *Raft)replicateLog(follower int) {
 	defer rf.mu.Unlock()
 	log_len := len(rf.log)
 
-	if (rf.me != rf.currentLeader) {
+	if rf.currentRole != Leader {
 		return
 	}
 	Assert(rf.me==rf.currentLeader, "only leader can replicate log\n")
@@ -437,7 +437,10 @@ func (rf *Raft)broadcastHeartBeat() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	Assert(rf.me==rf.currentLeader && rf.currentRole == Leader, "only leader can replicate log\n")
+	if rf.currentRole != Leader {
+		return
+	}
+	Assert(rf.me==rf.currentLeader, "only leader can replicate log\n")
 
 	n := len(rf.peers)
 	for node := 0; node < n; node++ {
@@ -477,7 +480,7 @@ func (rf *Raft)startElection() {
 			rft.mu.Lock()
 			defer rft.mu.Unlock()
 			if !ok {
-				DPrintf("T %d: %d send server %d fail\n", rft.currentTerm, rft.me, server)
+				// fmt.Printf("T %d: %d send server %d fail\n", rft.currentTerm, rft.me, server)
 				return
 			}
 
@@ -526,12 +529,13 @@ func (rf *Raft)startElection() {
 }
 
 func (rf *Raft) ticker() {
+	timer := time.NewTimer(time.Duration(electionTimeout())  * time.Millisecond)  
+
 	for rf.killed() == false {
 
 		// Your code here (3A)
 		// Check if a leader election should be started.
-		timer := time.NewTimer(time.Duration(electionTimeout())  * time.Millisecond)  
-		for {
+		// for {
 			// 读取当前状态
 			_, isLeader := rf.GetState()
 			delay := func() int {  
@@ -541,17 +545,20 @@ func (rf *Raft) ticker() {
 					return electionTimeout()
 				}
 			}()
+			// fmt.Printf("%d(%v) is alive\n", rf.me, isLeader)
 
 			timer.Reset(time.Duration(delay) * time.Millisecond)
 			if (!isLeader) {
 
 				select {
 				case <-timer.C:
+					timer.Stop()
 					rf.startElection()
 				case <-rf.sigChan:
 					// 如果成为leader
+					timer.Stop()
 					if _, isLeader := rf.GetState(); isLeader {
-						timer.Stop()
+						// fmt.Printf("T %d: %d is leader\n", rf.currentTerm, rf.me)
 						rf.broadcastHeartBeat()
 					}
 				}
@@ -561,20 +568,15 @@ func (rf *Raft) ticker() {
 				select {
 				case <-timer.C:
 					// leader广播heartbeat消息
+					// timer.Stop()
 					go rf.broadcastHeartBeat()
 
 				case <-rf.sigChan:
+					// timer.Stop()
 					// DPrintf("T %d: %d %d get sigChan\n", rf.currentTerm, rf.currentRole, rf.me)
 				}
 			}
-			
-		}
-
-
-		// pause for a random amount of time between 50 and 350
-		// milliseconds.
-		ms := 50 + (rand.Int63() % 300)
-		time.Sleep(time.Duration(ms) * time.Millisecond)
+		// }
 	}
 }
 
@@ -601,7 +603,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	rf.currentRole = Follower
 	rf.currentLeader	= -1
-	rf.votesReceived =  make(map[int]bool)
+	rf.votesReceived =  make([]bool, len(rf.peers))
 
 	rf.commitIndex = -1
 	rf.lastApplied = -1
