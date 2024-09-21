@@ -196,6 +196,19 @@ type AppendEntriesReply struct {
 	Success 		bool
 }
 
+// 恢复到Follower时，积累的选票需要取消
+// 调用时需要确保已经拥有rf的锁
+func (rf *Raft)giveupVotes() {
+	rf.currentRole = Follower
+	rf.currentLeader = -1
+	rf.votedFor = -1
+
+	for i, _ := range rf.votesReceived {
+		rf.votesReceived[i] = false
+	}
+	rf.votesNumber = 0
+}
+
 // example RequestVote RPC handler.
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (3A, 3B).
@@ -204,8 +217,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 
 	if rf.currentTerm < args.Term {
 		rf.currentTerm = args.Term
-		rf.currentRole = Follower
-		rf.votedFor = -1
+		rf.giveupVotes()
 		rf.sigChan <- struct{}{}
 	}
 
@@ -232,11 +244,10 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 	if rf.currentTerm < args.Term  {
 		rf.currentTerm = args.Term
-		rf.votedFor = -1
 	}
 
 	if rf.currentTerm == args.Term {
-		rf.currentRole = Follower
+		rf.giveupVotes()
 		rf.currentLeader = args.LeaderId
 		DPrintf("T %d: server %d(%d) be follower to %d\n", rf.currentTerm, rf.me, rf.currentRole, rf.currentLeader)
 		rf.sigChan <- struct{}{}
@@ -383,11 +394,11 @@ func (rf *Raft) killed() bool {
 }
 
 func electionTimeout() int {
-	return int(300 + (rand.Int63() % 300))
+	return int(1000 + (rand.Int63() % 300))
 }
 
 func heartbeatTimeout() int {
-	return int(10 + (rand.Int63() % 90))
+	return int( 50 + (rand.Int63() % 300))
 }
 
 func (rf *Raft)replicateLog(follower int) {
@@ -412,25 +423,31 @@ func (rf *Raft)replicateLog(follower int) {
 		args.Entries = append(args.Entries, rf.log[i])
 	}
 
-	ok := rf.sendAppendEntries(follower, &args, &reply)
-	if ok {
-		if reply.Term == rf.currentTerm && rf.currentRole == Leader {
-			Assert(rf.me == rf.currentLeader, "Leader is me\n")
-			if reply.Success {
-				rf.nextIndex[follower] = log_len
-				rf.matchIndex[follower] = log_len - 1
-			} else {
-				rf.nextIndex[follower] = reply.SuggestIndex
-				// 重试
-				go rf.replicateLog(follower)
+	go func(follower int, args *AppendEntriesArgs, reply *AppendEntriesReply, rft *Raft) {
+		ok := rft.sendAppendEntries(follower, args, reply)
+		rft.mu.Lock()
+		defer rft.mu.Unlock()
+
+		if ok {
+			if reply.Term == rft.currentTerm && rft.currentRole == Leader {
+				Assert(rft.me == rft.currentLeader, "Leader is me\n")
+				if reply.Success {
+					rft.nextIndex[follower] = log_len
+					rft.matchIndex[follower] = log_len - 1
+				} else {
+					rft.nextIndex[follower] = reply.SuggestIndex
+					// 重试
+					go rft.replicateLog(follower)
+				}
+			} else if reply.Term > rft.currentTerm {
+				DPrintf("T %d: %d be follower\n", rft.currentTerm, rft.me)
+				rft.currentTerm = reply.Term
+				rft.giveupVotes()
+
+				rft.sigChan <-struct{}{}
 			}
-		} else if reply.Term > rf.currentTerm {
-			rf.currentTerm = reply.Term
-			rf.currentRole = Follower
-			rf.votedFor = -1
-			rf.sigChan <-struct{}{}
-		}
-	} 
+		} 
+	}(follower, &args, &reply, rf)
 }
 
 func (rf *Raft)broadcastHeartBeat() {
@@ -471,6 +488,7 @@ func (rf *Raft)startElection() {
 		if node == rf.me {
 			continue
 		}
+
 		// 通过协程并行发送投票请求
 		go func(server int,term int, candidateId int, lastLogIndex int, lastLogTerm int, rft *Raft) {
 			args := RequestVoteArgs{Term: term, CandidateId: candidateId, LastLogIndex: lastLogIndex, LastLogTerm: lastLogTerm}
@@ -496,8 +514,6 @@ func (rf *Raft)startElection() {
 					if rft.votesNumber >= (len(rft.peers) + 1) / 2 {
 						rft.currentRole = Leader
 						rft.currentLeader = rft.me
-						rft.votesNumber = 0
-
 						
 						// 状态发生改变
 						rft.sigChan <- struct{}{}
@@ -517,9 +533,7 @@ func (rf *Raft)startElection() {
 				}
 			} else if reply.Term > rft.currentTerm {
 				rft.currentTerm = reply.Term
-				rft.currentRole = Follower
-				rft.votesNumber = 0
-				
+				rft.giveupVotes()
 				// 状态发生变化
 				rft.sigChan <- struct{}{}
 			}
@@ -552,18 +566,19 @@ func (rf *Raft) ticker() {
 
 				select {
 				case <-timer.C:
-					timer.Stop()
-					rf.startElection()
+					// fmt.Printf("T %d: %d restart election\n", rf.currentTerm, rf.me)
+					go rf.startElection()
 				case <-rf.sigChan:
 					// 如果成为leader
-					timer.Stop()
+					// timer.Stop()
 					if _, isLeader := rf.GetState(); isLeader {
 						// fmt.Printf("T %d: %d is leader\n", rf.currentTerm, rf.me)
-						rf.broadcastHeartBeat()
+						go rf.broadcastHeartBeat()
 					}
+					
 				}
 			} else {
-				// DPrintf("%d is leader\n", rf.me)
+				// fmt.Printf("T %d: %d is leader\n", rf.currentTerm, rf.me)
 
 				select {
 				case <-timer.C:
@@ -577,6 +592,12 @@ func (rf *Raft) ticker() {
 				}
 			}
 		// }
+		timer.Stop()
+
+		// pause for a random amount of time between 50 and 350
+			// milliseconds.
+			// ms := 50 + (rand.Int63() % 300)
+			// time.Sleep(time.Duration(ms) * time.Millisecond)
 	}
 }
 
