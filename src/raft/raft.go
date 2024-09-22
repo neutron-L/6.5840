@@ -95,6 +95,9 @@ type Raft struct {
 
 	// 当状态发生变化时，如选票数足够以及角色变化，则通过其发送信号给ticker协程
 	sigChan				chan struct{}
+
+	// 传送apply Msg的chan
+	applyCh				chan ApplyMsg
 }
 
 // return currentTerm and whether this server
@@ -192,8 +195,10 @@ type AppendEntriesArgs struct {
 
 type AppendEntriesReply struct {
 	Term			int
-	SuggestIndex	int   // log复制的时候，如果不匹配则给出一个建议值
 	Success 		bool
+
+	SuggestIndex	int   // log复制的时候，如果不匹配则给出一个建议值
+	Ack				int   // log复制时，follower期待的下次接收的entry的下标	
 }
 
 // 恢复到Follower时，积累的选票需要取消
@@ -207,6 +212,12 @@ func (rf *Raft)giveupVotes() {
 		rf.votesReceived[i] = false
 	}
 	rf.votesNumber = 0
+}
+
+
+// 检查哪些entry可以提交，调用时需要已经持有rf的锁
+func (rf *Raft)commitLogEntries() {
+
 }
 
 // example RequestVote RPC handler.
@@ -279,13 +290,15 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 		// 更新commitIndex & apply command
 		Assert(rf.commitIndex <= args.LeaderCommit, "follower commit index should not be greater than leader`s\n")
-		for i := rf.commitIndex; i < args.LeaderCommit; i++ {
-
+		for i := rf.commitIndex + 1; i <= args.LeaderCommit; i++ {
+			msg := ApplyMsg{CommandValid: true, Command: rf.log[i].Command, CommandIndex: i} 
+			rf.applyCh <- msg
 		}
 		rf.commitIndex = args.LeaderCommit
 
 		reply.Term = rf.currentTerm
 		reply.Success = true
+		reply.Ack = len(rf.log)
 	} else {
 		if rf.currentTerm == args.Term {
 			if log_len <= args.PrevLogIndex {
@@ -431,9 +444,11 @@ func (rf *Raft)replicateLog(follower int) {
 		if ok {
 			if reply.Term == rft.currentTerm && rft.currentRole == Leader {
 				Assert(rft.me == rft.currentLeader, "Leader is me\n")
-				if reply.Success {
+				if reply.Success && reply.Ack >= rft.nextIndex[follower] {
 					rft.nextIndex[follower] = log_len
 					rft.matchIndex[follower] = log_len - 1
+
+					// commit log entries
 				} else {
 					rft.nextIndex[follower] = reply.SuggestIndex
 					// 重试
@@ -633,6 +648,8 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.matchIndex = make([]int, len(rf.peers))
 
 	rf.sigChan = make(chan struct{})
+
+	rf.applyCh = applyCh
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
