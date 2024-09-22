@@ -271,9 +271,9 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	if rf.currentTerm == args.Term && logOk {
 		// 复制log
 		suffix_len := len(args.Entries)
-		if args.PrevLogIndex >= 0 && suffix_len > 0 {
+		if suffix_len > 0 && log_len > args.PrevLogIndex + 1  {
 			index := log_len - 1
-			if args.PrevLogIndex + suffix_len < log_len {
+			if args.PrevLogIndex + 1 + suffix_len < log_len {
 				index = args.PrevLogIndex + suffix_len
 			}
 			if args.Entries[index - args.PrevLogIndex - 1].Term != rf.log[index].Term {
@@ -291,8 +291,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		// 更新commitIndex & apply command
 		Assert(rf.commitIndex <= args.LeaderCommit, "follower commit index should not be greater than leader`s\n")
 		for i := rf.commitIndex + 1; i <= args.LeaderCommit; i++ {
-			msg := ApplyMsg{CommandValid: true, Command: rf.log[i].Command, CommandIndex: i} 
-			rf.applyCh <- msg
+			rf.applyCh <- ApplyMsg{CommandValid: true, Command: rf.log[i].Command, CommandIndex: i} 
 		}
 		rf.commitIndex = args.LeaderCommit
 
@@ -449,6 +448,29 @@ func (rf *Raft)replicateLog(follower int) {
 					rft.matchIndex[follower] = log_len - 1
 
 					// commit log entries
+					var replicateNum int
+					i := rf.commitIndex + 1
+					followerNum := len(rft.peers)
+					for i < len(rft.log) {
+						replicateNum = 0
+						for j := 0; j < followerNum; j++ {
+							if rft.matchIndex[j] >= i {
+								replicateNum++
+							}
+						}
+						
+						if replicateNum < (followerNum + 1) / 2 {
+							break
+						}
+						i++
+					}
+					i--
+					if i > rft.commitIndex && rft.log[i].Term == rft.currentTerm {
+						for j := rft.commitIndex + 1; j <= i; j++ {
+							rft.applyCh <- ApplyMsg{CommandValid: true, Command: rf.log[j].Command, CommandIndex: j} 
+						}
+						rft.commitIndex = i
+					}
 				} else {
 					rft.nextIndex[follower] = reply.SuggestIndex
 					// 重试
