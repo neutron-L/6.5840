@@ -23,7 +23,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	// "fmt"
+	"fmt"
 	//	"6.5840/labgob"
 	"6.5840/labrpc"
 )
@@ -317,7 +317,9 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 				}
 				reply.SuggestIndex = i
 			}
-		} 
+		} else {
+			fmt.Printf("%v reject log %v \n", rf.currentTerm, args.Term)
+		}
 		reply.Term = rf.currentTerm
 		reply.Success = false
 	}
@@ -388,6 +390,7 @@ func (rf *Raft)startElection() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
+	fmt.Printf("election start %v\n", rf.currentTerm+1)
 	rf.currentTerm++
 	rf.currentRole = Candidate
 	rf.votedFor = rf.me
@@ -423,11 +426,12 @@ func (rf *Raft)startElection() {
 			// 不仅需要调用成功且得到投票，还需要判断是否是当前任期内发起的vote
 			if rf.currentRole == Candidate && reply.VoteGranted && reply.Term == rf.currentTerm {
 				if !rf.votesReceived[server] {
-					DPrintf("T %d: server %d vote %d(%d/%d)\n", rf.currentTerm, server, rf.me, rf.votesNumber + 1, len(rf.peers))
+					fmt.Printf("T %d: server %d vote %d(%d/%d)\n", rf.currentTerm, server, rf.me, rf.votesNumber + 1, len(rf.peers))
 
 					rf.votesReceived[server] = true
 					rf.votesNumber++
 					if rf.votesNumber >= (len(rf.peers) + 1) / 2 {
+						fmt.Printf("New leader is %v(%v)\n", rf.me, rf.currentTerm)
 						rf.currentRole = Leader
 						rf.currentLeader = rf.me
 						
@@ -538,10 +542,15 @@ func (rf *Raft)replicateLog(follower int) {
 	args.Entries = make([]LogEntry, 0, log_len + 1 - rf.nextIndex[follower])
 
 	// leader不能复制不包含当前term的entry的log
+	if log_len > 0 {
+		fmt.Printf("log_len %v log term %v currentTerm %v\n", log_len, rf.log[log_len].Term, rf.currentTerm)
+	}
+
 	if rf.log[log_len].Term == rf.currentTerm {
 		for i := rf.nextIndex[follower]; i <= log_len; i++ {
 			args.Entries = append(args.Entries, rf.log[i])
 		}
+		Assert(len(args.Entries) == log_len + 1 - rf.nextIndex[follower], "init args entries error")
 	}
 	
 	Assert(len(args.Entries) + args.PrevLogIndex <= log_len, "set args error")
@@ -586,6 +595,8 @@ func (rf *Raft)replicateLog(follower int) {
 						rf.commitIndex = i
 					}
 				} else {
+					fmt.Printf("replicate log error %v %v\n", rf.nextIndex[follower], reply.SuggestIndex)
+
 					rf.nextIndex[follower] = reply.SuggestIndex
 					Assert(rf.nextIndex[follower] <= log_len + 1, "nextIndex out of index\n")
 					// rf.nextIndex[follower]--
