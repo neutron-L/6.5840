@@ -537,9 +537,13 @@ func (rf *Raft)replicateLog(follower int) {
 	}			
 	args.Entries = make([]LogEntry, 0, log_len + 1 - rf.nextIndex[follower])
 
-	for i := rf.nextIndex[follower]; i <= log_len; i++ {
-		args.Entries = append(args.Entries, rf.log[i])
+	// leader不能复制不包含当前term的entry的log
+	if rf.log[log_len].Term == rf.currentTerm {
+		for i := rf.nextIndex[follower]; i <= log_len; i++ {
+			args.Entries = append(args.Entries, rf.log[i])
+		}
 	}
+	
 	Assert(len(args.Entries) + args.PrevLogIndex <= log_len, "set args error")
 
 	go func(follower int, args *AppendEntriesArgs, reply *AppendEntriesReply, rf *Raft) {
