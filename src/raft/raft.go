@@ -215,6 +215,12 @@ func (rf *Raft)giveupVotes() {
 }
 
 
+// 返回日志长度，论文中日志的下标从1开始，为了方便修改，将日志长度计算封装
+// 调用时需要已经持有rf的锁
+func (rf *Raft)logLength() int {
+	return len(rf.log) - 1
+}
+
 // 检查哪些entry可以提交，调用时需要已经持有rf的锁
 func (rf *Raft)commitLogEntries() {
 
@@ -233,11 +239,12 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	}
 
 	lastTerm := 0
-	if len(rf.log) > 0 {
-		lastTerm = rf.log[len(rf.log) - 1].Term
+	log_len := rf.logLength()
+	if log_len > 0 {
+		lastTerm = rf.log[log_len].Term
 	}
 	logOk := args.LastLogTerm > lastTerm || 
-		(args.LastLogTerm == lastTerm && args.LastLogIndex + 1 >= len(rf.log)) 
+		(args.LastLogTerm == lastTerm && args.LastLogIndex >= log_len) 
 
 	reply.VoteGranted = false
 	if rf.currentTerm == args.Term && logOk && (rf.votedFor == -1 || rf.votedFor == args.CandidateId) {
@@ -265,25 +272,25 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		DPrintf("sig succ\n")
 	}
 
-	log_len := len(rf.log)
-	logOk := (log_len > args.PrevLogIndex) && (args.PrevLogIndex == -1 || rf.log[args.PrevLogIndex].Term <= args.PrevLogTerm)
+	log_len := rf.logLength()
+	logOk := (log_len >= args.PrevLogIndex) && (args.PrevLogIndex == 0 || rf.log[args.PrevLogIndex].Term <= args.PrevLogTerm)
 
 	if rf.currentTerm == args.Term && logOk {
 		// 复制log
 		suffix_len := len(args.Entries)
-		if suffix_len > 0 && log_len > args.PrevLogIndex + 1  {
-			index := log_len - 1
-			if args.PrevLogIndex + 1 + suffix_len < log_len {
+		if suffix_len > 0 && log_len > args.PrevLogIndex  {
+			index := log_len
+			if args.PrevLogIndex + suffix_len < log_len {
 				index = args.PrevLogIndex + suffix_len
 			}
 			if args.Entries[index - args.PrevLogIndex - 1].Term != rf.log[index].Term {
-				log_len = args.PrevLogIndex + 1
-				rf.log = rf.log[:log_len]
+				log_len = args.PrevLogIndex
+				rf.log = rf.log[:log_len + 1]
 			}
 		}
 
-		if args.PrevLogIndex + 1 + suffix_len > log_len {
-			for i := log_len - (args.PrevLogIndex + 1); i < suffix_len; i++ {
+		if args.PrevLogIndex + suffix_len > log_len {
+			for i := log_len - args.PrevLogIndex; i < suffix_len; i++ {
 				rf.log = append(rf.log, args.Entries[i])
 			} 
 		}
@@ -297,7 +304,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 		reply.Term = rf.currentTerm
 		reply.Success = true
-		reply.Ack = len(rf.log)
+		reply.Ack = rf.logLength() + 1
 		Assert(reply.Ack == suffix_len + args.PrevLogIndex + 1, "Ack set error\n")
 	} else {
 		if rf.currentTerm == args.Term {
@@ -305,7 +312,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 				reply.SuggestIndex = log_len 
 			} else {
 				i := args.PrevLogIndex
-				for i > 0 && rf.log[i].Term == rf.log[i - 1].Term  {
+				for i > 1 && rf.log[i].Term == rf.log[i - 1].Term  {
 					i--
 				}
 				reply.SuggestIndex = i
@@ -357,142 +364,6 @@ func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *Ap
 }
 
 
-// the service using Raft (e.g. a k/v server) wants to start
-// agreement on the next command to be appended to Raft's log. if this
-// server isn't the leader, returns false. otherwise start the
-// agreement and return immediately. there is no guarantee that this
-// command will ever be committed to the Raft log, since the leader
-// may fail or lose an election. even if the Raft instance has been killed,
-// this function should return gracefully.
-//
-// the first return value is the index that the command will appear at
-// if it's ever committed. the second return value is the current
-// term. the third return value is true if this server believes it is
-// the leader.
-func (rf *Raft) Start(command interface{}) (int, int, bool) {
-	index := -1
-	term := -1
-	isLeader := true
-
-	// Your code here (3B).
-	rf.mu.Lock()
-	defer rf.mu.Unlock()
-	index = len(rf.log)
-	rf.log = append(rf.log, LogEntry{Term: rf.currentTerm, Command: command})
-	term = int(rf.currentTerm)
-	if rf.currentRole != Leader {
-		isLeader = false
-	}
-
-	return index, term, isLeader
-}
-
-// the tester doesn't halt goroutines created by Raft after each test,
-// but it does call the Kill() method. your code can use killed() to
-// check whether Kill() has been called. the use of atomic avoids the
-// need for a lock.
-//
-// the issue is that long-running goroutines use memory and may chew
-// up CPU time, perhaps causing later tests to fail and generating
-// confusing debug output. any goroutine with a long-running loop
-// should call killed() to check whether it should stop.
-func (rf *Raft) Kill() {
-	atomic.StoreInt32(&rf.dead, 1)
-	// Your code here, if desired.
-}
-
-func (rf *Raft) killed() bool {
-	z := atomic.LoadInt32(&rf.dead)
-	return z == 1
-}
-
-func electionTimeout() int {
-	return int(1000 + (rand.Int63() % 300))
-}
-
-func heartbeatTimeout() int {
-	return int( 50 + (rand.Int63() % 300))
-}
-
-func (rf *Raft)replicateLog(follower int) {
-	rf.mu.Lock()
-	defer rf.mu.Unlock()
-	log_len := len(rf.log)
-
-	if rf.currentRole != Leader {
-		return
-	}
-	Assert(rf.me==rf.currentLeader, "only leader can replicate log\n")
-	args := AppendEntriesArgs{Term: rf.currentTerm, LeaderId: rf.me, LeaderCommit: rf.commitIndex}
-	reply := AppendEntriesReply{}
-	
-	args.PrevLogIndex = rf.nextIndex[follower] - 1
-	if args.PrevLogIndex >= 0 {
-		Assert(args.PrevLogIndex < len(rf.log), "PrevLogIndex greater out of index\n")
-		args.PrevLogTerm = rf.log[args.PrevLogIndex].Term 	
-	}			
-	args.Entries = make([]LogEntry, 0, log_len - rf.nextIndex[follower])
-
-	for i := rf.nextIndex[follower]; i < log_len; i++ {
-		args.Entries = append(args.Entries, rf.log[i])
-	}
-	Assert(len(args.Entries) + args.PrevLogIndex + 1 <= log_len, "set args error")
-
-	go func(follower int, args *AppendEntriesArgs, reply *AppendEntriesReply, rf *Raft) {
-		ok := rf.sendAppendEntries(follower, args, reply)
-		
-		if ok {
-			rf.mu.Lock()
-			defer rf.mu.Unlock()
-
-			if reply.Term == rf.currentTerm && rf.currentRole == Leader {
-				Assert(rf.me == rf.currentLeader, "Leader is me\n")
-				if reply.Success && reply.Ack >= rf.nextIndex[follower] {
-					rf.nextIndex[follower] = reply.Ack
-					Assert(rf.nextIndex[follower] <= len(rf.log), "Ack out of index\n")
-					rf.matchIndex[follower] = reply.Ack - 1
-
-					// commit log entries
-					var replicateNum int
-					i := rf.commitIndex + 1
-					followerNum := len(rf.peers)
-					for i < len(rf.log) {
-						replicateNum = 0
-						for j := 0; j < followerNum; j++ {
-							if rf.matchIndex[j] >= i {
-								replicateNum++
-							}
-						}
-						
-						if replicateNum < (followerNum + 1) / 2 {
-							break
-						}
-						i++
-					}
-					i--
-					if i > rf.commitIndex && rf.log[i].Term == rf.currentTerm {
-						for j := rf.commitIndex + 1; j <= i; j++ {
-							rf.applyCh <- ApplyMsg{CommandValid: true, Command: rf.log[j].Command, CommandIndex: j} 
-						}
-						rf.commitIndex = i
-					}
-				} else {
-					rf.nextIndex[follower] = reply.SuggestIndex
-					Assert(rf.nextIndex[follower] <= len(rf.log), "nextIndex out of index\n")
-					// rf.nextIndex[follower]--
-					// 重试
-					go rf.replicateLog(follower)
-				}
-			} else if reply.Term > rf.currentTerm {
-				DPrintf("T %d: %d be follower\n", rf.currentTerm, rf.me)
-				rf.currentTerm = reply.Term
-				rf.giveupVotes()
-
-				rf.sigChan <-struct{}{}
-			}
-		} 
-	}(follower, &args, &reply, rf)
-}
 
 func (rf *Raft)broadcastHeartBeat() {
 	rf.mu.Lock()
@@ -524,8 +395,9 @@ func (rf *Raft)startElection() {
 	rf.votesNumber = 1
 
 	lastTerm := 0
-	if len(rf.log) > 0 {
-		lastTerm = rf.log[0].Term
+	log_len := rf.logLength()
+	if log_len > 0 {
+		lastTerm = rf.log[log_len].Term
 	}
 
 	for node, _ := range rf.peers {
@@ -563,14 +435,14 @@ func (rf *Raft)startElection() {
 						rf.sigChan <- struct{}{}
 
 						// 复制日志前做初始化，正好此时持有锁
-						log_len := len(rf.log)
+						log_len := rf.logLength()
 						n := len(rf.peers)
 						for node := 0; node < n; node++ {
-							rf.nextIndex[node] = log_len
-							rf.matchIndex[node] = -1
+							rf.nextIndex[node] = log_len + 1
+							rf.matchIndex[node] = 0
 
 							if node == rf.me {
-								rf.matchIndex[node] = log_len - 1
+								rf.matchIndex[node] = log_len
 							}
 						}
 					}
@@ -581,9 +453,150 @@ func (rf *Raft)startElection() {
 				// 状态发生变化
 				rf.sigChan <- struct{}{}
 			}
-		}(node, rf.currentTerm, rf.me, len(rf.log) - 1, lastTerm, rf)
+		}(node, rf.currentTerm, rf.me, log_len, lastTerm, rf)
 	}
 
+}
+
+
+// the service using Raft (e.g. a k/v server) wants to start
+// agreement on the next command to be appended to Raft's log. if this
+// server isn't the leader, returns false. otherwise start the
+// agreement and return immediately. there is no guarantee that this
+// command will ever be committed to the Raft log, since the leader
+// may fail or lose an election. even if the Raft instance has been killed,
+// this function should return gracefully.
+//
+// the first return value is the index that the command will appear at
+// if it's ever committed. the second return value is the current
+// term. the third return value is true if this server believes it is
+// the leader.
+func (rf *Raft) Start(command interface{}) (int, int, bool) {
+	index := -1
+	term := -1
+	isLeader := true
+
+	// Your code here (3B).
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	
+	if rf.currentRole != Leader {
+		isLeader = false
+	} else {
+		rf.log = append(rf.log, LogEntry{Term: rf.currentTerm, Command: command})
+		index = rf.logLength()
+		term = int(rf.currentTerm)
+		go rf.broadcastHeartBeat()
+	}
+	return index, term, isLeader
+}
+
+// the tester doesn't halt goroutines created by Raft after each test,
+// but it does call the Kill() method. your code can use killed() to
+// check whether Kill() has been called. the use of atomic avoids the
+// need for a lock.
+//
+// the issue is that long-running goroutines use memory and may chew
+// up CPU time, perhaps causing later tests to fail and generating
+// confusing debug output. any goroutine with a long-running loop
+// should call killed() to check whether it should stop.
+func (rf *Raft) Kill() {
+	atomic.StoreInt32(&rf.dead, 1)
+	// Your code here, if desired.
+}
+
+func (rf *Raft) killed() bool {
+	z := atomic.LoadInt32(&rf.dead)
+	return z == 1
+}
+
+func electionTimeout() int {
+	return int(1000 + (rand.Int63() % 300))
+}
+
+func heartbeatTimeout() int {
+	return int( 50 + (rand.Int63() % 300))
+}
+
+func (rf *Raft)replicateLog(follower int) {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	log_len := rf.logLength()
+
+	if rf.currentRole != Leader {
+		return
+	}
+	Assert(rf.me==rf.currentLeader, "only leader can replicate log\n")
+	args := AppendEntriesArgs{Term: rf.currentTerm, LeaderId: rf.me, LeaderCommit: rf.commitIndex}
+	reply := AppendEntriesReply{}
+	
+	args.PrevLogIndex = rf.nextIndex[follower] - 1
+	if args.PrevLogIndex >= 0 {
+		Assert(args.PrevLogIndex <= log_len, "PrevLogIndex greater out of index\n")
+		args.PrevLogTerm = rf.log[args.PrevLogIndex].Term 	
+	}			
+	args.Entries = make([]LogEntry, 0, log_len + 1 - rf.nextIndex[follower])
+
+	for i := rf.nextIndex[follower]; i <= log_len; i++ {
+		args.Entries = append(args.Entries, rf.log[i])
+	}
+	Assert(len(args.Entries) + args.PrevLogIndex <= log_len, "set args error")
+
+	go func(follower int, args *AppendEntriesArgs, reply *AppendEntriesReply, rf *Raft) {
+		ok := rf.sendAppendEntries(follower, args, reply)
+		
+		if ok {
+			rf.mu.Lock()
+			defer rf.mu.Unlock()
+
+			if reply.Term == rf.currentTerm && rf.currentRole == Leader {
+				Assert(rf.me == rf.currentLeader, "Leader is me\n")
+				if reply.Success && reply.Ack >= rf.nextIndex[follower] {
+					rf.nextIndex[follower] = reply.Ack
+					log_len := rf.logLength()
+					Assert(rf.nextIndex[follower] <= log_len + 1, "Ack out of index\n")
+					rf.matchIndex[follower] = reply.Ack - 1
+
+					// commit log entries
+					var replicateNum int
+					i := rf.commitIndex + 1
+					followerNum := len(rf.peers)
+					for i <= log_len {
+						replicateNum = 0
+						for j := 0; j < followerNum; j++ {
+							if rf.matchIndex[j] >= i {
+								replicateNum++
+							}
+						}
+						
+						if replicateNum < (followerNum + 1) / 2 {
+							break
+						}
+						i++
+					}
+					i--
+					if i > rf.commitIndex && rf.log[i].Term == rf.currentTerm {
+						for j := rf.commitIndex + 1; j <= i; j++ {
+							rf.applyCh <- ApplyMsg{CommandValid: true, Command: rf.log[j].Command, CommandIndex: j} 
+						}
+						rf.commitIndex = i
+					}
+				} else {
+					rf.nextIndex[follower] = reply.SuggestIndex
+					Assert(rf.nextIndex[follower] <= log_len + 1, "nextIndex out of index\n")
+					// rf.nextIndex[follower]--
+					// 重试
+					go rf.replicateLog(follower)
+				}
+			} else if reply.Term > rf.currentTerm {
+				DPrintf("T %d: %d be follower\n", rf.currentTerm, rf.me)
+				rf.currentTerm = reply.Term
+				rf.giveupVotes()
+
+				rf.sigChan <-struct{}{}
+			}
+		} 
+	}(follower, &args, &reply, rf)
 }
 
 func (rf *Raft) ticker() {
@@ -666,14 +679,14 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.votedFor = -1
 	rf.log = make([]LogEntry, 1)
 
-	rf.currentRole = Follower
-	rf.currentLeader	= -1
+	rf.currentRole   = Follower
+	rf.currentLeader = -1
 	rf.votesReceived =  make([]bool, len(rf.peers))
 
-	rf.commitIndex = -1
-	rf.lastApplied = -1
+	rf.commitIndex = 0
+	rf.lastApplied = 0
 
-	rf.nextIndex = make([]int, len(rf.peers))
+	rf.nextIndex  = make([]int, len(rf.peers))
 	rf.matchIndex = make([]int, len(rf.peers))
 
 	rf.sigChan = make(chan struct{})
