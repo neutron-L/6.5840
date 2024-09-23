@@ -298,6 +298,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		reply.Term = rf.currentTerm
 		reply.Success = true
 		reply.Ack = len(rf.log)
+		Assert(reply.Ack == suffix_len + args.PrevLogIndex + 1, "Ack set error\n")
 	} else {
 		if rf.currentTerm == args.Term {
 			if log_len <= args.PrevLogIndex {
@@ -430,11 +431,12 @@ func (rf *Raft)replicateLog(follower int) {
 		Assert(args.PrevLogIndex < len(rf.log), "PrevLogIndex greater out of index\n")
 		args.PrevLogTerm = rf.log[args.PrevLogIndex].Term 	
 	}			
-	args.Entries = make([]LogEntry, log_len - rf.nextIndex[follower])
+	args.Entries = make([]LogEntry, 0, log_len - rf.nextIndex[follower])
 
 	for i := rf.nextIndex[follower]; i < log_len; i++ {
 		args.Entries = append(args.Entries, rf.log[i])
 	}
+	Assert(len(args.Entries) + args.PrevLogIndex + 1 <= log_len, "set args error")
 
 	go func(follower int, args *AppendEntriesArgs, reply *AppendEntriesReply, rf *Raft) {
 		ok := rf.sendAppendEntries(follower, args, reply)
