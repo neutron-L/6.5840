@@ -23,7 +23,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"fmt"
 	//	"6.5840/labgob"
 	"6.5840/labrpc"
 )
@@ -104,11 +103,9 @@ type Raft struct {
 // believes it is the leader.
 func (rf *Raft) GetState() (int, bool) {
 	// Your code here (3A).
-	// fmt.Printf("GetState start\n")
-
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	// fmt.Printf("GetState return\n")
+
 	return rf.currentTerm, rf.currentLeader == rf.me
 }
 
@@ -232,6 +229,8 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
+	DPrintf("%v recv request vote from %v\n", rf.me, args.CandidateId)
+
 	if rf.currentTerm < args.Term {
 		rf.currentTerm = args.Term
 		rf.giveupVotes()
@@ -267,9 +266,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	if rf.currentTerm == args.Term {
 		rf.giveupVotes()
 		rf.currentLeader = args.LeaderId
-		DPrintf("T %d: server %d(%d) be follower to %d\n", rf.currentTerm, rf.me, rf.currentRole, rf.currentLeader)
 		rf.sigChan <- struct{}{}
-		DPrintf("sig succ\n")
 	}
 
 	log_len := rf.logLength()
@@ -296,16 +293,22 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		}
 
 		// 更新commitIndex & apply command
-		Assert(rf.commitIndex <= args.LeaderCommit, "follower commit index should not be greater than leader`s\n")
-		for i := rf.commitIndex + 1; i <= args.LeaderCommit; i++ {
-			rf.applyCh <- ApplyMsg{CommandValid: true, Command: rf.log[i].Command, CommandIndex: i} 
+		// Assert(rf.commitIndex <= args.LeaderCommit, "follower commit index should not be greater than leader`s\n")
+		if rf.commitIndex  < args.LeaderCommit {
+			for i := rf.commitIndex + 1; i <= args.LeaderCommit; i++ {
+				rf.applyCh <- ApplyMsg{CommandValid: true, Command: rf.log[i].Command, CommandIndex: i} 
+			}
+			rf.commitIndex = args.LeaderCommit
+			rf.lastApplied = args.LeaderCommit
 		}
-		rf.commitIndex = args.LeaderCommit
+		
 
 		reply.Term = rf.currentTerm
 		reply.Success = true
-		reply.Ack = rf.logLength() + 1
-		Assert(reply.Ack == suffix_len + args.PrevLogIndex + 1, "Ack set error\n")
+		reply.Ack = suffix_len + args.PrevLogIndex + 1
+		DPrintf("%v(%v) recv log commit %d  suffix_len %v args.PrevLogIndex %v ack %d\n", rf.me, rf.currentTerm, rf.commitIndex, suffix_len, args.PrevLogIndex, reply.Ack)
+
+		// Assert(reply.Ack == suffix_len + args.PrevLogIndex + 1, "Ack set error\n")
 	} else {
 		if rf.currentTerm == args.Term {
 			if log_len <= args.PrevLogIndex {
@@ -316,9 +319,10 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 					i--
 				}
 				reply.SuggestIndex = i
+				Assert(reply.SuggestIndex > 0, "suggest index must > 0")
 			}
 		} else {
-			fmt.Printf("%v reject log %v \n", rf.currentTerm, args.Term)
+			DPrintf("%v reject log %v \n", rf.currentTerm, args.Term)
 		}
 		reply.Term = rf.currentTerm
 		reply.Success = false
@@ -366,7 +370,6 @@ func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *Ap
 }
 
 
-
 func (rf *Raft)broadcastHeartBeat() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
@@ -375,7 +378,6 @@ func (rf *Raft)broadcastHeartBeat() {
 		return
 	}
 	Assert(rf.me==rf.currentLeader, "only leader can replicate log\n")
-
 	n := len(rf.peers)
 	for node := 0; node < n; node++ {
 		if node == rf.me {
@@ -390,7 +392,11 @@ func (rf *Raft)startElection() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	fmt.Printf("election start %v\n", rf.currentTerm+1)
+	if rf.currentRole == Leader {
+		return
+	}
+
+	DPrintf("%v start election %v\n", rf.me, rf.currentTerm+1)
 	rf.currentTerm++
 	rf.currentRole = Candidate
 	rf.votedFor = rf.me
@@ -403,35 +409,36 @@ func (rf *Raft)startElection() {
 		lastTerm = rf.log[log_len].Term
 	}
 
+	args := RequestVoteArgs{Term: rf.currentTerm, CandidateId: rf.me, LastLogIndex: log_len, LastLogTerm: lastTerm}
 	for node, _ := range rf.peers {
 		if node == rf.me {
 			continue
 		}
-
 		// 通过协程并行发送投票请求
-		go func(server int,term int, candidateId int, lastLogIndex int, lastLogTerm int, rf *Raft) {
-			args := RequestVoteArgs{Term: term, CandidateId: candidateId, LastLogIndex: lastLogIndex, LastLogTerm: lastLogTerm}
-			reply := RequestVoteReply{}
-			ok := rf.sendRequestVote(server, &args, &reply)
+		go func(server int, args *RequestVoteArgs, rf *Raft) {
+			reply := &RequestVoteReply{}
+			DPrintf("%v(%v) send req vote to %v\n", rf.me, rf.currentTerm, server)
+			ok := rf.sendRequestVote(server, args, reply)
 
-			rf.mu.Lock()
-			defer rf.mu.Unlock()
 			if !ok {
+				DPrintf("%v vote rpc %v failed\n", rf.me, server)
 				// fmt.Printf("T %d: %d send server %d fail\n", rf.currentTerm, rf.me, server)
 				return
 			}
 
-			
+			rf.mu.Lock()
+			defer rf.mu.Unlock()
+			// DPrintf("send request vote succ\n")
 
 			// 不仅需要调用成功且得到投票，还需要判断是否是当前任期内发起的vote
 			if rf.currentRole == Candidate && reply.VoteGranted && reply.Term == rf.currentTerm {
 				if !rf.votesReceived[server] {
-					fmt.Printf("T %d: server %d vote %d(%d/%d)\n", rf.currentTerm, server, rf.me, rf.votesNumber + 1, len(rf.peers))
+					// DPrintf("T %d: server %d vote %d(%d/%d)\n", rf.currentTerm, server, rf.me, rf.votesNumber + 1, len(rf.peers))
 
 					rf.votesReceived[server] = true
 					rf.votesNumber++
 					if rf.votesNumber >= (len(rf.peers) + 1) / 2 {
-						fmt.Printf("New leader is %v(%v)\n", rf.me, rf.currentTerm)
+						DPrintf("New leader is %v(%v)\n", rf.me, rf.currentTerm)
 						rf.currentRole = Leader
 						rf.currentLeader = rf.me
 						
@@ -457,7 +464,7 @@ func (rf *Raft)startElection() {
 				// 状态发生变化
 				rf.sigChan <- struct{}{}
 			}
-		}(node, rf.currentTerm, rf.me, log_len, lastTerm, rf)
+		}(node, &args, rf)
 	}
 
 }
@@ -487,8 +494,10 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	if rf.currentRole != Leader {
 		isLeader = false
 	} else {
+		DPrintf("Leader %v(%v) cmd %v\n", rf.me, rf.currentTerm, command)
 		rf.log = append(rf.log, LogEntry{Term: rf.currentTerm, Command: command})
 		index = rf.logLength()
+		rf.matchIndex[rf.me] = index
 		term = int(rf.currentTerm)
 		go rf.broadcastHeartBeat()
 	}
@@ -515,16 +524,17 @@ func (rf *Raft) killed() bool {
 }
 
 func electionTimeout() int {
-	return int(1000 + (rand.Int63() % 300))
+	return int(350 + (rand.Int63() % 350))
 }
 
 func heartbeatTimeout() int {
-	return int( 50 + (rand.Int63() % 300))
+	return int( 50 + (rand.Int63() % 50))
 }
 
 func (rf *Raft)replicateLog(follower int) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
+
 	log_len := rf.logLength()
 
 	if rf.currentRole != Leader {
@@ -532,7 +542,6 @@ func (rf *Raft)replicateLog(follower int) {
 	}
 	Assert(rf.me==rf.currentLeader, "only leader can replicate log\n")
 	args := AppendEntriesArgs{Term: rf.currentTerm, LeaderId: rf.me, LeaderCommit: rf.commitIndex}
-	reply := AppendEntriesReply{}
 	
 	args.PrevLogIndex = rf.nextIndex[follower] - 1
 	if args.PrevLogIndex >= 0 {
@@ -543,7 +552,7 @@ func (rf *Raft)replicateLog(follower int) {
 
 	// leader不能复制不包含当前term的entry的log
 	if log_len > 0 {
-		fmt.Printf("log_len %v log term %v currentTerm %v\n", log_len, rf.log[log_len].Term, rf.currentTerm)
+		DPrintf("log_len %d log term %v currentTerm %v\n", log_len, rf.log[log_len].Term, rf.currentTerm)
 	}
 
 	if rf.log[log_len].Term == rf.currentTerm {
@@ -555,19 +564,23 @@ func (rf *Raft)replicateLog(follower int) {
 	
 	Assert(len(args.Entries) + args.PrevLogIndex <= log_len, "set args error")
 
-	go func(follower int, args *AppendEntriesArgs, reply *AppendEntriesReply, rf *Raft) {
+	go func(follower int, args *AppendEntriesArgs, rf *Raft) {
+		reply := &AppendEntriesReply{}
 		ok := rf.sendAppendEntries(follower, args, reply)
 		
 		if ok {
+			DPrintf("%v(%v) log rpc to %v\n", rf.me, rf.currentTerm, follower)
+
 			rf.mu.Lock()
 			defer rf.mu.Unlock()
 
 			if reply.Term == rf.currentTerm && rf.currentRole == Leader {
 				Assert(rf.me == rf.currentLeader, "Leader is me\n")
 				if reply.Success && reply.Ack >= rf.nextIndex[follower] {
+					DPrintf("%v(%v) recv replicate reply from %v ack %v\n", rf.me, rf.currentTerm, follower, reply.Ack)
+					Assert(rf.nextIndex[follower] <= log_len + 1, "Ack out of index\n")
 					rf.nextIndex[follower] = reply.Ack
 					log_len := rf.logLength()
-					Assert(rf.nextIndex[follower] <= log_len + 1, "Ack out of index\n")
 					rf.matchIndex[follower] = reply.Ack - 1
 
 					// commit log entries
@@ -593,15 +606,21 @@ func (rf *Raft)replicateLog(follower int) {
 							rf.applyCh <- ApplyMsg{CommandValid: true, Command: rf.log[j].Command, CommandIndex: j} 
 						}
 						rf.commitIndex = i
+						rf.lastApplied = i
+
+						DPrintf("%v(%v) update commit index %v\n", rf.me, rf.currentTerm, i)
+					} else {
+						DPrintf("%v(%v) not update commit index %v i %v %v\n", rf.me, rf.currentTerm, rf.commitIndex, i, rf.matchIndex[rf.me])
 					}
 				} else {
-					fmt.Printf("replicate log error %v %v\n", rf.nextIndex[follower], reply.SuggestIndex)
+					DPrintf("replicate log error %v %v\n", rf.nextIndex[follower], reply.SuggestIndex)
 
 					rf.nextIndex[follower] = reply.SuggestIndex
+					// rf.nextIndex[follower]--
 					Assert(rf.nextIndex[follower] <= log_len + 1, "nextIndex out of index\n")
 					// rf.nextIndex[follower]--
 					// 重试
-					go rf.replicateLog(follower)
+					// go rf.replicateLog(follower)
 				}
 			} else if reply.Term > rf.currentTerm {
 				DPrintf("T %d: %d be follower\n", rf.currentTerm, rf.me)
@@ -610,8 +629,10 @@ func (rf *Raft)replicateLog(follower int) {
 
 				rf.sigChan <-struct{}{}
 			}
-		} 
-	}(follower, &args, &reply, rf)
+		} else {
+			DPrintf("%v log rpc %v failed\n", rf.me, follower)
+		}
+	}(follower, &args, rf)
 }
 
 func (rf *Raft) ticker() {
