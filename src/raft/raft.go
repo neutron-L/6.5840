@@ -249,7 +249,7 @@ func (rf *Raft)commitLogEntries() {
 	i := rf.commitIndex + 1
 	followerNum := len(rf.peers)
 	log_len := rf.logLength()
-	
+
 	for i <= log_len {
 		replicateNum = 0
 		for j := 0; j < followerNum; j++ {
@@ -272,9 +272,7 @@ func (rf *Raft)commitLogEntries() {
 		rf.lastApplied = i
 
 		DPrintf("%v(%v) update commit index %v\n", rf.me, rf.currentTerm, i)
-	} else {
-		DPrintf("%v(%v) not update commit index %v i %v %v\n", rf.me, rf.currentTerm, rf.commitIndex, i, rf.matchIndex[rf.me])
-	}
+	} 
 }
 
 // example RequestVote RPC handler.
@@ -344,9 +342,13 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			} 
 		}
 
+		DPrintf("%v(%v) recv log commit %d  suffix_len %v args.PrevLogIndex %v\n", rf.me, rf.currentTerm, rf.commitIndex, suffix_len, args.PrevLogIndex)
 		// 更新commitIndex & apply command
-		// Assert(rf.commitIndex <= args.LeaderCommit, "follower commit index should not be greater than leader`s\n")
-		if rf.commitIndex  < args.LeaderCommit {
+		if (args.LeaderCommit > rf.logLength()) {
+			DPrintf("local len %v cidx %v ldidx %v\n", rf.logLength(), rf.commitIndex, args.LeaderCommit)
+			Assert(false, "commit index greater than log len\n")
+		}
+		if rf.commitIndex < args.LeaderCommit {
 			for i := rf.commitIndex + 1; i <= args.LeaderCommit; i++ {
 				rf.applyCh <- ApplyMsg{CommandValid: true, Command: rf.log[i].Command, CommandIndex: i} 
 			}
@@ -371,6 +373,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 				reply.SuggestIndex = i
 				Assert(reply.SuggestIndex > 0, "suggest index must > 0")
 			}
+			DPrintf("%v(%v) give suggest index %v\n", rf.me, rf.currentTerm, reply.SuggestIndex)
 		} else {
 			DPrintf("%v reject log %v \n", rf.currentTerm, args.Term)
 		}
@@ -471,20 +474,15 @@ func (rf *Raft)startElection() {
 			ok := rf.sendRequestVote(follower, args, reply)
 
 			if !ok {
-				DPrintf("%v vote rpc %v failed\n", rf.me, follower)
-				// fmt.Printf("T %d: %d send server %d fail\n", rf.currentTerm, rf.me, server)
 				return
 			}
 
 			rf.mu.Lock()
 			defer rf.mu.Unlock()
-			// DPrintf("send request vote succ\n")
-			DPrintf("%v(%v) send req vote to %v\n", rf.me, rf.currentTerm, follower)
 
 			// 不仅需要调用成功且得到投票，还需要判断是否是当前任期内发起的vote
 			if rf.currentRole == Candidate && reply.VoteGranted && reply.Term == rf.currentTerm {
 				if !rf.votesReceived[follower] {
-					// DPrintf("T %d: server %d vote %d(%d/%d)\n", rf.currentTerm, server, rf.me, rf.votesNumber + 1, len(rf.peers))
 
 					rf.votesReceived[follower] = true
 					rf.votesNumber++
@@ -528,11 +526,11 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	if rf.currentRole != Leader {
 		isLeader = false
 	} else {
-		DPrintf("Leader %v(%v) cmd %v\n", rf.me, rf.currentTerm, command)
 		rf.log = append(rf.log, LogEntry{Term: rf.currentTerm, Command: command})
 		index = rf.logLength()
 		rf.matchIndex[rf.me] = index
 		term = int(rf.currentTerm)
+		DPrintf("Leader %v(%v) cmd %v(%v)\n", rf.me, rf.currentTerm, command, index)
 		// go rf.broadcastHeartBeat()
 	}
 	return index, term, isLeader
@@ -582,19 +580,22 @@ func (rf *Raft)replicateLog(follower int) {
 	args.Entries = make([]LogEntry, 0, log_len + 1 - rf.nextIndex[follower])
 
 	// leader不能复制不包含当前term的entry的log
-	if log_len > 0 {
-		DPrintf("log_len %d log term %v currentTerm %v\n", log_len, rf.log[log_len].Term, rf.currentTerm)
-	}
-
-	if rf.log[log_len].Term == rf.currentTerm {
-		for i := rf.nextIndex[follower]; i <= log_len; i++ {
-			args.Entries = append(args.Entries, rf.log[i])
+	// 但是已经提交的可以
+	lastEntryIndex := func() int {
+		if rf.log[log_len].Term == rf.currentTerm { 
+			return log_len
+		} else {
+			return rf.commitIndex
 		}
-		Assert(len(args.Entries) == log_len + 1 - rf.nextIndex[follower], "init args entries error")
+	}()
+
+	for i := rf.nextIndex[follower]; i <= lastEntryIndex; i++ {
+		args.Entries = append(args.Entries, rf.log[i])
 	}
 	
 	Assert(len(args.Entries) + args.PrevLogIndex <= log_len, "set args error")
 
+	DPrintf("%v(%v) send log to %v, prev index %v entry %v\n", rf.me, rf.currentTerm, follower, args.PrevLogIndex, len(args.Entries))
 	go func(follower int, args *AppendEntriesArgs, rf *Raft) {
 		// stateChanged := false
 		reply := &AppendEntriesReply{}
@@ -603,8 +604,6 @@ func (rf *Raft)replicateLog(follower int) {
 		if ok {
 			rf.mu.Lock()
 			defer rf.mu.Unlock()
-
-			DPrintf("%v(%v) log rpc to %v\n", rf.me, rf.currentTerm, follower)
 
 			if reply.Term == rf.currentTerm && rf.currentRole == Leader {
 				Assert(rf.me == rf.currentLeader, "Leader is me\n")
@@ -616,14 +615,18 @@ func (rf *Raft)replicateLog(follower int) {
 
 					// commit log entries
 					rf.commitLogEntries()
+				} else {
+					Assert(reply.SuggestIndex <= log_len, "give a wrong suggest index\n")
+					DPrintf("%v(%v) recv suggest index %v for %v\n", rf.me, rf.currentTerm, reply.SuggestIndex, follower)
+					rf.nextIndex[follower] = reply.SuggestIndex
+					// rf.nextIndex[follower]--
 				}
 			} else if reply.Term > rf.currentTerm {
-				DPrintf("T %d: %d be follower\n", rf.currentTerm, rf.me)
 				rf.currentTerm = reply.Term
 				rf.convertToFollower()
 			}
 		} else {
-			DPrintf("%v log rpc %v failed\n", rf.me, follower)
+		DPrintf("%v(%v) send log to %v error\n", rf.me, rf.currentTerm, follower)
 		}
 	}(follower, &args, rf)
 }
