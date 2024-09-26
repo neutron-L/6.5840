@@ -320,7 +320,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	}
 
 	log_len := rf.logLength()
-	logOk := (log_len >= args.PrevLogIndex) && (args.PrevLogIndex == 0 || rf.log[args.PrevLogIndex].Term <= args.PrevLogTerm)
+	logOk := (log_len >= args.PrevLogIndex) && (args.PrevLogIndex == 0 || rf.log[args.PrevLogIndex].Term == args.PrevLogTerm)
 
 	if rf.currentTerm == args.Term && logOk {
 		// 复制log
@@ -626,7 +626,7 @@ func (rf *Raft)replicateLog(follower int) {
 				rf.convertToFollower()
 			}
 		} else {
-		DPrintf("%v(%v) send log to %v error\n", rf.me, rf.currentTerm, follower)
+			DPrintf("%v(%v) send log to %v error\n", rf.me, rf.currentTerm, follower)
 		}
 	}(follower, &args, rf)
 }
