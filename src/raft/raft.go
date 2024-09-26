@@ -18,12 +18,12 @@ package raft
 //
 
 import (
-	//	"bytes"
+	"bytes"
 	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
-	//	"6.5840/labgob"
+	"6.5840/labgob"
 	"6.5840/labrpc"
 )
 
@@ -119,12 +119,14 @@ func (rf *Raft) GetState() (int, bool) {
 func (rf *Raft) persist() {
 	// Your code here (3C).
 	// Example:
-	// w := new(bytes.Buffer)
-	// e := labgob.NewEncoder(w)
-	// e.Encode(rf.xxx)
-	// e.Encode(rf.yyy)
-	// raftstate := w.Bytes()
-	// rf.persister.Save(raftstate, nil)
+	w := new(bytes.Buffer)
+	e := labgob.NewEncoder(w)
+	e.Encode(rf.currentTerm)
+	e.Encode(rf.votedFor)
+	e.Encode(rf.log)
+	e.Encode(rf.lastApplied)
+	raftstate := w.Bytes()
+	rf.persister.Save(raftstate, nil)
 }
 
 
@@ -135,17 +137,12 @@ func (rf *Raft) readPersist(data []byte) {
 	}
 	// Your code here (3C).
 	// Example:
-	// r := bytes.NewBuffer(data)
-	// d := labgob.NewDecoder(r)
-	// var xxx
-	// var yyy
-	// if d.Decode(&xxx) != nil ||
-	//    d.Decode(&yyy) != nil {
-	//   error...
-	// } else {
-	//   rf.xxx = xxx
-	//   rf.yyy = yyy
-	// }
+	r := bytes.NewBuffer(data)
+	d := labgob.NewDecoder(r)
+	if d.Decode(&rf.currentTerm) != nil || d.Decode(&rf.votedFor) != nil || 
+		d.Decode(&rf.log) != nil || d.Decode(&rf.lastApplied) != nil {
+	  Assert(false, "readPersist error\n")
+	} 
 }
 
 
@@ -194,7 +191,10 @@ type AppendEntriesReply struct {
 	Term			int
 	Success 		bool
 
-	SuggestIndex	int   // log复制的时候，如果不匹配则给出一个建议值
+	XTerm			int   // term in the conflicting entry (if any)
+    XIndex			int   // index of first entry with that term (if any)
+    XLen			int   // log length
+
 	Ack				int   // log复制时，follower期待的下次接收的entry的下标	
 }
 
@@ -307,16 +307,20 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 
 // leader复制日志到其他机器或者发送空日志作为heartbeat信息
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
+	needPersistence := false
+
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
 	if rf.currentTerm < args.Term  {
 		rf.currentTerm = args.Term
+		needPersistence = true
 	}
 
 	if rf.currentTerm == args.Term {
 		rf.currentLeader = args.LeaderId
 		rf.convertToFollower()
+		needPersistence = true
 	}
 
 	log_len := rf.logLength()
@@ -333,6 +337,8 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			if args.Entries[index - args.PrevLogIndex - 1].Term != rf.log[index].Term {
 				log_len = args.PrevLogIndex
 				rf.log = rf.log[:log_len + 1]
+
+				needPersistence = true
 			}
 		}
 
@@ -340,6 +346,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			for i := log_len - args.PrevLogIndex; i < suffix_len; i++ {
 				rf.log = append(rf.log, args.Entries[i])
 			} 
+			needPersistence = true
 		}
 
 		DPrintf("%v(%v) recv log commit %d  suffix_len %v args.PrevLogIndex %v\n", rf.me, rf.currentTerm, rf.commitIndex, suffix_len, args.PrevLogIndex)
@@ -354,6 +361,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			}
 			rf.commitIndex = args.LeaderCommit
 			rf.lastApplied = args.LeaderCommit
+			needPersistence = true
 		}
 		
 
@@ -363,17 +371,19 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		DPrintf("%v(%v) recv log commit %d  suffix_len %v args.PrevLogIndex %v ack %d\n", rf.me, rf.currentTerm, rf.commitIndex, suffix_len, args.PrevLogIndex, reply.Ack)
 	} else {
 		if rf.currentTerm == args.Term {
-			if log_len < args.PrevLogIndex {
-				reply.SuggestIndex = log_len
-			} else {
+			reply.XLen = log_len
+
+			if args.PrevLogIndex > 0 && args.PrevLogIndex <= log_len {
+				reply.XTerm = rf.log[args.PrevLogIndex].Term
+
 				i := args.PrevLogIndex
 				for i > 1 && rf.log[i].Term == rf.log[i - 1].Term  {
 					i--
 				}
-				reply.SuggestIndex = i
-				Assert(reply.SuggestIndex > 0, "suggest index must > 0")
+				reply.XIndex = i
+				DPrintf("%v(%v) xlen %v xterm %v xindex %v\n", rf.me, rf.currentTerm, reply.XLen, reply.XTerm, reply.XIndex)
 			}
-			DPrintf("%v(%v) give suggest index %v\n", rf.me, rf.currentTerm, reply.SuggestIndex)
+
 		} else {
 			DPrintf("%v reject log %v \n", rf.currentTerm, args.Term)
 		}
@@ -381,6 +391,9 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		reply.Success = false
 	}
 
+	if needPersistence {
+		rf.persist()
+	}
 }
 
 
@@ -442,6 +455,8 @@ func (rf *Raft)broadcastHeartBeat() {
 }
 
 func (rf *Raft)startElection() {
+	needPersistence := false
+
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
@@ -455,6 +470,7 @@ func (rf *Raft)startElection() {
 	rf.votedFor = rf.me
 	rf.votesReceived[rf.me] = true
 	rf.votesNumber = 1
+	needPersistence = true
 
 	lastTerm := 0
 	log_len := rf.logLength()
@@ -495,10 +511,13 @@ func (rf *Raft)startElection() {
 			} else if reply.Term > rf.currentTerm {
 				rf.currentTerm = reply.Term
 				rf.convertToFollower()
+				rf.persist()
 			}
 		}(follower, &args, rf)
 	}
-
+	if needPersistence {
+		rf.persist()
+	}
 }
 
 
@@ -532,6 +551,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 		term = int(rf.currentTerm)
 		DPrintf("Leader %v(%v) cmd %v(%v)\n", rf.me, rf.currentTerm, command, index)
 		// go rf.broadcastHeartBeat()
+		rf.persist()
 	}
 	return index, term, isLeader
 }
@@ -556,7 +576,7 @@ func (rf *Raft) killed() bool {
 }
 
 func electionTimeout() int {
-	return int(700 + (rand.Int63() % 350))
+	return int(350 + (rand.Int63() % 350))
 }
 
 func heartbeatTimeout() int {
@@ -612,18 +632,48 @@ func (rf *Raft)replicateLog(follower int) {
 					Assert(rf.nextIndex[follower] <= log_len + 1, "Ack out of index\n")
 					rf.nextIndex[follower] = reply.Ack
 					rf.matchIndex[follower] = reply.Ack - 1
-
+					Assert(rf.nextIndex[follower] > 0 && rf.nextIndex[follower] <= log_len + 1, "ack is wrong")
 					// commit log entries
 					rf.commitLogEntries()
 				} else {
-					Assert(reply.SuggestIndex <= log_len, "give a wrong suggest index\n")
-					DPrintf("%v(%v) recv suggest index %v for %v\n", rf.me, rf.currentTerm, reply.SuggestIndex, follower)
-					rf.nextIndex[follower] = reply.SuggestIndex
+					// DPrintf("%v(%v) recv suggest index %v for %v\n", rf.me, rf.currentTerm, reply.SuggestIndex, follower)
+					// rf.nextIndex[follower] = reply.SuggestIndex
+					if reply.XLen < args.PrevLogIndex {
+						rf.nextIndex[follower] = reply.XLen + 1 
+					} else {
+						// 查找第一个大于xterm的term的下标，二分法
+						log_len := rf.logLength()
+						l := 1
+						r := log_len + 1
+						
+						for l < r {
+							mid := (l + r) >> 1
+							if rf.log[mid].Term <= reply.XTerm {
+								l = mid + 1
+							} else {
+								r = mid
+							}
+						}
+
+						Assert(r <= log_len, "leader log is old than follow\n")
+						if r == 1 {
+							rf.nextIndex[follower] = 1
+						} else {
+							if rf.log[r - 1].Term != reply.XTerm {
+								rf.nextIndex[follower] = reply.XIndex
+							} else {
+								rf.nextIndex[follower] = r - 1
+							}
+						} 
+					}
 					// rf.nextIndex[follower]--
+					Assert(rf.nextIndex[follower] > 0 && rf.nextIndex[follower] <= rf.logLength() + 1, "suggest index is wrong")
+
 				}
 			} else if reply.Term > rf.currentTerm {
 				rf.currentTerm = reply.Term
 				rf.convertToFollower()
+				rf.persist()
 			}
 		} else {
 			DPrintf("%v(%v) send log to %v error\n", rf.me, rf.currentTerm, follower)
