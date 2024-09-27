@@ -250,6 +250,17 @@ func (rf *Raft)commitLogEntries() {
 	followerNum := len(rf.peers)
 	log_len := rf.logLength()
 
+	for j := 0; j < followerNum; j++ {
+		if rf.matchIndex[j] >= rf.commitIndex {
+			replicateNum++
+		}
+	}
+	
+	// if replicateNum < (followerNum + 1) / 2 {
+	// 	DPrintf("prev commit index %v\n", rf.commitIndex)
+	// 	Assert(false, "when commit log, prev commitIndex is wrong\n")
+	// }
+
 	for i <= log_len {
 		replicateNum = 0
 		for j := 0; j < followerNum; j++ {
@@ -282,7 +293,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	DPrintf("%v recv request vote from %v\n", rf.me, args.CandidateId)
+	DPrintf("%v(%v) recv request vote from %v(%v)\n", rf.me, rf.currentTerm, args.CandidateId, args.Term)
 
 	if rf.currentTerm < args.Term {
 		rf.currentTerm = args.Term
@@ -298,7 +309,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		(args.LastLogTerm == lastTerm && args.LastLogIndex >= log_len) 
 
 	reply.VoteGranted = false
-	if rf.currentTerm == args.Term && logOk && (rf.votedFor == -1 || rf.votedFor == args.CandidateId) {
+	if rf.currentTerm == args.Term && logOk && rf.currentLeader == -1 && (rf.votedFor == -1 || rf.votedFor == args.CandidateId) {
 		rf.votedFor = args.CandidateId
 		reply.VoteGranted = true
 	}
@@ -318,13 +329,21 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	}
 
 	if rf.currentTerm == args.Term {
-		rf.currentLeader = args.LeaderId
 		rf.convertToFollower()
+		rf.currentLeader = args.LeaderId
 		needPersistence = true
 	}
 
 	log_len := rf.logLength()
 	logOk := (log_len >= args.PrevLogIndex) && (args.PrevLogIndex == 0 || rf.log[args.PrevLogIndex].Term == args.PrevLogTerm)
+
+	if !logOk {
+		if log_len < args.PrevLogIndex {
+			DPrintf("!logOk: log len %v prev index %v\n", log_len, args.PrevLogIndex)
+		} else {
+			DPrintf("!logOk: log prev term %v args prev term %v\n", rf.log[args.PrevLogIndex].Term, args.PrevLogTerm)
+		}
+	}
 
 	if rf.currentTerm == args.Term && logOk {
 		// 复制log
@@ -349,13 +368,13 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			needPersistence = true
 		}
 
-		DPrintf("%v(%v) recv log commit %d  suffix_len %v args.PrevLogIndex %v\n", rf.me, rf.currentTerm, rf.commitIndex, suffix_len, args.PrevLogIndex)
+		DPrintf("%v(%v) recv log old commit %d log len %v suffix_len %v args.PrevLogIndex %v\n", rf.me, rf.currentTerm, rf.commitIndex, rf.logLength(), suffix_len, args.PrevLogIndex)
 		// 更新commitIndex & apply command
 		if (args.LeaderCommit > rf.logLength()) {
 			DPrintf("local len %v cidx %v ldidx %v\n", rf.logLength(), rf.commitIndex, args.LeaderCommit)
 			Assert(false, "commit index greater than log len\n")
 		}
-		if rf.commitIndex < args.LeaderCommit {
+		if rf.commitIndex < args.LeaderCommit && args.LeaderCommit <= rf.logLength() {
 			for i := rf.commitIndex + 1; i <= args.LeaderCommit; i++ {
 				rf.applyCh <- ApplyMsg{CommandValid: true, Command: rf.log[i].Command, CommandIndex: i} 
 			}
@@ -368,7 +387,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		reply.Term = rf.currentTerm
 		reply.Success = true
 		reply.Ack = suffix_len + args.PrevLogIndex + 1
-		DPrintf("%v(%v) recv log commit %d  suffix_len %v args.PrevLogIndex %v ack %d\n", rf.me, rf.currentTerm, rf.commitIndex, suffix_len, args.PrevLogIndex, reply.Ack)
+		DPrintf("%v(%v) recv log  new commit %d  suffix_len %v args.PrevLogIndex %v ack %d\n", rf.me, rf.currentTerm, rf.commitIndex, suffix_len, args.PrevLogIndex, reply.Ack)
 	} else {
 		if rf.currentTerm == args.Term {
 			reply.XLen = log_len
@@ -381,7 +400,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 					i--
 				}
 				reply.XIndex = i
-				DPrintf("%v(%v) xlen %v xterm %v xindex %v\n", rf.me, rf.currentTerm, reply.XLen, reply.XTerm, reply.XIndex)
+				DPrintf("%v(%v) xlen %v xterm %v xindex %v myterm %v prevterm %v\n", rf.me, rf.currentTerm, reply.XLen, reply.XTerm, reply.XIndex, rf.log[args.PrevLogIndex].Term, args.PrevLogTerm)
 			}
 
 		} else {
@@ -390,6 +409,9 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		reply.Term = rf.currentTerm
 		reply.Success = false
 	}
+
+	
+	DPrintf("%v(%v) new commit %d log len %v\n", rf.me, rf.currentTerm, rf.commitIndex, rf.logLength())
 
 	if needPersistence {
 		rf.persist()
@@ -627,7 +649,7 @@ func (rf *Raft)replicateLog(follower int) {
 
 			if reply.Term == rf.currentTerm && rf.currentRole == Leader {
 				Assert(rf.me == rf.currentLeader, "Leader is me\n")
-				if reply.Success && reply.Ack >= rf.nextIndex[follower] {
+				if reply.Success && reply.Ack > rf.matchIndex[follower] {
 					DPrintf("%v(%v) recv replicate reply from %v ack %v\n", rf.me, rf.currentTerm, follower, reply.Ack)
 					Assert(rf.nextIndex[follower] <= log_len + 1, "Ack out of index\n")
 					rf.nextIndex[follower] = reply.Ack
@@ -638,34 +660,35 @@ func (rf *Raft)replicateLog(follower int) {
 				} else {
 					// DPrintf("%v(%v) recv suggest index %v for %v\n", rf.me, rf.currentTerm, reply.SuggestIndex, follower)
 					// rf.nextIndex[follower] = reply.SuggestIndex
-					if reply.XLen < args.PrevLogIndex {
-						rf.nextIndex[follower] = reply.XLen + 1 
-					} else {
-						// 查找第一个大于xterm的term的下标，二分法
-						log_len := rf.logLength()
-						l := 1
-						r := log_len + 1
-						
-						for l < r {
-							mid := (l + r) >> 1
-							if rf.log[mid].Term <= reply.XTerm {
-								l = mid + 1
-							} else {
-								r = mid
-							}
-						}
-
-						Assert(r <= log_len, "leader log is old than follow\n")
-						if r == 1 {
-							rf.nextIndex[follower] = 1
+					
+					// 查找第一个大于xterm的term的下标，二分法
+					log_len := rf.logLength()
+					l := 1
+					r := log_len + 1
+					
+					for l < r {
+						mid := (l + r) >> 1
+						if rf.log[mid].Term <= reply.XTerm {
+							l = mid + 1
 						} else {
-							if rf.log[r - 1].Term != reply.XTerm {
-								rf.nextIndex[follower] = reply.XIndex
-							} else {
-								rf.nextIndex[follower] = r - 1
-							}
-						} 
+							r = mid
+						}
 					}
+
+					if r == 1 {
+						rf.nextIndex[follower] = 1
+					} else {
+						if rf.log[r - 1].Term != reply.XTerm {
+							rf.nextIndex[follower] = reply.XIndex
+						} else {
+							rf.nextIndex[follower] = r - 1
+						}
+					} 
+
+					if rf.nextIndex[follower] > reply.XLen + 1 {
+						rf.nextIndex[follower] = reply.XLen + 1 
+					}
+					
 					// rf.nextIndex[follower]--
 					Assert(rf.nextIndex[follower] > 0 && rf.nextIndex[follower] <= rf.logLength() + 1, "suggest index is wrong")
 
@@ -675,9 +698,7 @@ func (rf *Raft)replicateLog(follower int) {
 				rf.convertToFollower()
 				rf.persist()
 			}
-		} else {
-			DPrintf("%v(%v) send log to %v error\n", rf.me, rf.currentTerm, follower)
-		}
+		} 
 	}(follower, &args, rf)
 }
 
