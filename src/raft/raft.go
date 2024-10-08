@@ -198,6 +198,19 @@ type AppendEntriesReply struct {
 	Ack				int   // log复制时，follower期待的下次接收的entry的下标	
 }
 
+
+type InstallSnapshotRequest struct {
+	Term 			  	int  // leader’s term
+	LeaderId 		  	int  // so follower can redirect clients
+	LastIncludedIndex 	int 
+	LastIncludedTerm  	int 
+	data			  	[]byte
+}
+
+type InstallSnapshotReply struct {
+	Term				int
+}
+
 // 恢复到Follower时，积累的选票需要取消
 // 调用时需要确保已经拥有rf的锁
 func (rf *Raft)convertToFollower() {
@@ -325,7 +338,6 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 	if rf.currentTerm < args.Term  {
 		rf.currentTerm = args.Term
-		needPersistence = true
 	}
 
 	if rf.currentTerm == args.Term {
@@ -532,6 +544,7 @@ func (rf *Raft)startElection() {
 				}
 			} else if reply.Term > rf.currentTerm {
 				rf.currentTerm = reply.Term
+				DPrintf("%v(%v) recv vote reply %v(%v), convert to follower\n", rf.me, rf.currentTerm, follower, reply.Term)
 				rf.convertToFollower()
 				rf.persist()
 			}
@@ -695,6 +708,7 @@ func (rf *Raft)replicateLog(follower int) {
 				}
 			} else if reply.Term > rf.currentTerm {
 				rf.currentTerm = reply.Term
+				DPrintf("%v(%v) recv log reply %v(%v), convert to follower\n", rf.me, rf.currentTerm, follower, reply.Term)
 				rf.convertToFollower()
 				rf.persist()
 			}
