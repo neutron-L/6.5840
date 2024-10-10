@@ -422,11 +422,15 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	if rf.currentTerm == args.Term && logOk {
 		// 复制log
 		suffix_len := len(args.Entries)
+		if suffix_len > 0 {
+			DPrintf("%v recv: %v entries: %v\n", rf.me, args.PrevLogIndex, args.Entries)
+		}
 		if suffix_len > 0 && log_len + rf.lastSnapshotIndex > args.PrevLogIndex  {
 			index := log_len + rf.lastSnapshotIndex
 			if args.PrevLogIndex + suffix_len < log_len + rf.lastSnapshotIndex {
 				index = args.PrevLogIndex + suffix_len
 			}
+			DPrintf("two term %v(%v) %v(%v) \n", args.Entries[index - args.PrevLogIndex - 1], args.Entries[index - args.PrevLogIndex - 1].Term, rf.log[index - rf.lastSnapshotIndex], rf.log[index - rf.lastSnapshotIndex].Term)
 			if args.Entries[index - args.PrevLogIndex - 1].Term != rf.log[index - rf.lastSnapshotIndex].Term {
 				log_len = args.PrevLogIndex - rf.lastSnapshotIndex
 				rf.log = rf.log[:log_len + 1]
@@ -525,7 +529,9 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotRequest, reply *InstallSnap
 
 	rf.snapshot = args.Data
 	log_len := rf.logLength()
-	if args.LastIncludedIndex - rf.lastSnapshotIndex < log_len {
+	if args.LastIncludedIndex >= rf.lastSnapshotIndex + log_len {
+		rf.log = make([]LogEntry, 1)
+	} else if args.LastIncludedIndex - rf.lastSnapshotIndex < log_len {
 		old_log := rf.log
 		rf.log = make([]LogEntry, log_len - (args.LastIncludedIndex - rf.lastSnapshotIndex) + 1)
 		copy(rf.log[1:], old_log[args.LastIncludedIndex - rf.lastSnapshotIndex + 1 :])
@@ -626,7 +632,7 @@ func (rf *Raft)startElection() {
 		return
 	}
 
-	// DPrintf("%v start election %v\n", rf.me, rf.currentTerm+1)
+	DPrintf("%v start election %v\n", rf.me, rf.currentTerm+1)
 	rf.currentTerm++
 	rf.currentRole = Candidate
 	rf.votedFor = rf.me
@@ -717,6 +723,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	} else {
 		rf.log = append(rf.log, LogEntry{Term: rf.currentTerm, Command: command})
 		index = rf.logLength() + rf.lastSnapshotIndex
+		rf.nextIndex[rf.me] = index + 1
 		rf.matchIndex[rf.me] = index
 		term = int(rf.currentTerm)
 		DPrintf("Leader %v(%v) cmd %v(%v)\n", rf.me, rf.currentTerm, command, index)
@@ -819,13 +826,13 @@ func (rf *Raft)replicateLog(follower int) {
 	// }
 	n := lastEntryIndex - rf.nextIndex[follower] + 1
 	if n > 0 {
-		args.Entries = make([]LogEntry, lastEntryIndex - rf.nextIndex[follower] + 1)
+		args.Entries = make([]LogEntry, n)
 		copy(args.Entries, rf.log[rf.nextIndex[follower] - rf.lastSnapshotIndex : lastEntryIndex + 1 - rf.lastSnapshotIndex])
 	} else {
 		n = 0
 	}
 	
-	DPrintf("%v(%v) -> %v entries %v\n", rf.me, rf.currentTerm, follower, lastEntryIndex - rf.nextIndex[follower] + 1)
+	DPrintf("%v(%v) -> %v entries %v\n", rf.me, rf.currentTerm, follower, len(args.Entries))
 	Assert(len(args.Entries) + args.PrevLogIndex <= rf.lastSnapshotIndex + log_len, "set args error")
 
 	DPrintf("%v(%v %v) send log to %v, prev index %v entry %v\n", rf.me, rf.currentTerm, rf.currentRole, follower, args.PrevLogIndex, len(args.Entries))
@@ -936,7 +943,6 @@ func (rf *Raft) ticker() {
 							go rf.broadcastHeartBeat()
 						}
 					default:
-						DPrintf("%v start new election\n", rf.me)
 						go rf.startElection()
 					}
 				case <-rf.sigChan:
