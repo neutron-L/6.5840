@@ -25,6 +25,7 @@ import (
 	"time"
 	"6.5840/labgob"
 	"6.5840/labrpc"
+	"fmt"
 )
 
 
@@ -124,7 +125,7 @@ func (rf *Raft) persist() {
 	e.Encode(rf.currentTerm)
 	e.Encode(rf.votedFor)
 	e.Encode(rf.log)
-	e.Encode(rf.lastApplied)
+
 	raftstate := w.Bytes()
 	rf.persister.Save(raftstate, nil)
 }
@@ -140,7 +141,7 @@ func (rf *Raft) readPersist(data []byte) {
 	r := bytes.NewBuffer(data)
 	d := labgob.NewDecoder(r)
 	if d.Decode(&rf.currentTerm) != nil || d.Decode(&rf.votedFor) != nil || 
-		d.Decode(&rf.log) != nil || d.Decode(&rf.lastApplied) != nil {
+		d.Decode(&rf.log) != nil {
 	  Assert(false, "readPersist error\n")
 	} 
 }
@@ -204,7 +205,7 @@ type InstallSnapshotRequest struct {
 	LeaderId 		  	int  // so follower can redirect clients
 	LastIncludedIndex 	int 
 	LastIncludedTerm  	int 
-	data			  	[]byte
+	Data			  	[]byte
 }
 
 type InstallSnapshotReply struct {
@@ -303,10 +304,11 @@ func (rf *Raft)commitLogEntries() {
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (3A, 3B).
 	// stateChanged := false
+	DPrintf("RequestVote: %v(%v) -> %v\n", args.CandidateId, args.Term, rf.me)
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	DPrintf("%v(%v) recv request vote from %v(%v)\n", rf.me, rf.currentTerm, args.CandidateId, args.Term)
+	DPrintf("%v(%v %v) recv request vote from %v(%v)\n", rf.me, rf.currentTerm, rf.currentRole, args.CandidateId, args.Term)
 
 	if rf.currentTerm < args.Term {
 		rf.currentTerm = args.Term
@@ -325,6 +327,12 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	if rf.currentTerm == args.Term && logOk && rf.currentLeader == -1 && (rf.votedFor == -1 || rf.votedFor == args.CandidateId) {
 		rf.votedFor = args.CandidateId
 		reply.VoteGranted = true
+		DPrintf("%v(%v) vote to %v(%v)\n", rf.me, rf.currentTerm, args.CandidateId, args.Term)
+	} else if !logOk {
+		DPrintf("%v(%v) refuse vote to %v(%v), log len %v last term %v, args log idx %v log term %v\n", rf.me, rf.currentTerm, args.CandidateId, args.Term,
+		log_len, lastTerm, args.LastLogIndex, args.LastLogTerm)
+	} else {
+		DPrintf("%v(%v) refuse vote to %v(%v), has vote for %v\n", rf.me, rf.currentTerm, args.CandidateId, args.Term, rf.votedFor)
 	}
 	reply.Term = rf.currentTerm
 }
@@ -380,7 +388,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			needPersistence = true
 		}
 
-		DPrintf("%v(%v) recv log old commit %d log len %v suffix_len %v args.PrevLogIndex %v\n", rf.me, rf.currentTerm, rf.commitIndex, rf.logLength(), suffix_len, args.PrevLogIndex)
+		DPrintf("%v(%v) recv log old, commit %d log len %v suffix_len %v args.PrevLogIndex %v\n", rf.me, rf.currentTerm, rf.commitIndex, rf.logLength(), suffix_len, args.PrevLogIndex)
 		// 更新commitIndex & apply command
 		if (args.LeaderCommit > rf.logLength()) {
 			DPrintf("local len %v cidx %v ldidx %v\n", rf.logLength(), rf.commitIndex, args.LeaderCommit)
@@ -399,7 +407,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		reply.Term = rf.currentTerm
 		reply.Success = true
 		reply.Ack = suffix_len + args.PrevLogIndex + 1
-		DPrintf("%v(%v) recv log  new commit %d  suffix_len %v args.PrevLogIndex %v ack %d\n", rf.me, rf.currentTerm, rf.commitIndex, suffix_len, args.PrevLogIndex, reply.Ack)
+		DPrintf("%v(%v) recv log, new commit %d  suffix_len %v args.PrevLogIndex %v ack %d\n", rf.me, rf.currentTerm, rf.commitIndex, suffix_len, args.PrevLogIndex, reply.Ack)
 	} else {
 		if rf.currentTerm == args.Term {
 			reply.XLen = log_len
@@ -491,6 +499,7 @@ func (rf *Raft)broadcastHeartBeat() {
 func (rf *Raft)startElection() {
 	needPersistence := false
 
+	DPrintf("%v want to election...\n", rf.me)
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
@@ -523,15 +532,18 @@ func (rf *Raft)startElection() {
 			reply := &RequestVoteReply{}
 			ok := rf.sendRequestVote(follower, args, reply)
 
-			if !ok {
-				return
-			}
 
 			rf.mu.Lock()
 			defer rf.mu.Unlock()
 
+			if !ok {
+				DPrintf("%v(%v) send request vote to %v failed\n", rf.me, rf.currentTerm, follower)
+				return
+			}
+
 			// 不仅需要调用成功且得到投票，还需要判断是否是当前任期内发起的vote
 			if rf.currentRole == Candidate && reply.VoteGranted && reply.Term == rf.currentTerm {
+				DPrintf("%v(%v) recv vote from %v\n", rf.me, rf.currentTerm, follower)
 				if !rf.votesReceived[follower] {
 
 					rf.votesReceived[follower] = true
@@ -547,6 +559,8 @@ func (rf *Raft)startElection() {
 				DPrintf("%v(%v) recv vote reply %v(%v), convert to follower\n", rf.me, rf.currentTerm, follower, reply.Term)
 				rf.convertToFollower()
 				rf.persist()
+			} else if rf.currentRole != Candidate {
+				DPrintf("%v(%v) is %v\n", rf.me, rf.currentTerm, rf.currentRole)
 			}
 		}(follower, &args, rf)
 	}
@@ -615,7 +629,7 @@ func electionTimeout() int {
 }
 
 func heartbeatTimeout() int {
-	return int( 50 + (rand.Int63() % 50))
+	return int( 70 + (rand.Int63() % 35))
 }
 
 func (rf *Raft)replicateLog(follower int) {
@@ -650,69 +664,72 @@ func (rf *Raft)replicateLog(follower int) {
 	
 	Assert(len(args.Entries) + args.PrevLogIndex <= log_len, "set args error")
 
-	DPrintf("%v(%v) send log to %v, prev index %v entry %v\n", rf.me, rf.currentTerm, follower, args.PrevLogIndex, len(args.Entries))
+	DPrintf("%v(%v %v) send log to %v, prev index %v entry %v\n", rf.me, rf.currentTerm, rf.currentRole, follower, args.PrevLogIndex, len(args.Entries))
 	go func(follower int, args *AppendEntriesArgs, rf *Raft) {
 		// stateChanged := false
 		reply := &AppendEntriesReply{}
 		ok := rf.sendAppendEntries(follower, args, reply)
 		
-		if ok {
-			rf.mu.Lock()
-			defer rf.mu.Unlock()
+		rf.mu.Lock()
+		defer rf.mu.Unlock()
 
-			if reply.Term == rf.currentTerm && rf.currentRole == Leader {
-				Assert(rf.me == rf.currentLeader, "Leader is me\n")
-				if reply.Success && reply.Ack > rf.matchIndex[follower] {
-					DPrintf("%v(%v) recv replicate reply from %v ack %v\n", rf.me, rf.currentTerm, follower, reply.Ack)
-					Assert(rf.nextIndex[follower] <= log_len + 1, "Ack out of index\n")
-					rf.nextIndex[follower] = reply.Ack
-					rf.matchIndex[follower] = reply.Ack - 1
-					Assert(rf.nextIndex[follower] > 0 && rf.nextIndex[follower] <= log_len + 1, "ack is wrong")
-					// commit log entries
-					rf.commitLogEntries()
-				} else {
-					// DPrintf("%v(%v) recv suggest index %v for %v\n", rf.me, rf.currentTerm, reply.SuggestIndex, follower)
-					// rf.nextIndex[follower] = reply.SuggestIndex
-					
-					// 查找第一个大于xterm的term的下标，二分法
-					log_len := rf.logLength()
-					l := 1
-					r := log_len + 1
-					
-					for l < r {
-						mid := (l + r) >> 1
-						if rf.log[mid].Term <= reply.XTerm {
-							l = mid + 1
-						} else {
-							r = mid
-						}
-					}
+		if !ok {
+			DPrintf("%v(%v %v) send log(%v) to %v failed\n", rf.me, rf.currentTerm, rf.currentRole, args.Term, follower)
+			return
+		}
 
-					if r == 1 {
-						rf.nextIndex[follower] = 1
+		if reply.Term == rf.currentTerm && rf.currentRole == Leader {
+			Assert(rf.me == rf.currentLeader, "Leader is me\n")
+			if reply.Success && reply.Ack > rf.matchIndex[follower] {
+				DPrintf("%v(%v) recv replicate reply from %v, ack %v\n", rf.me, rf.currentTerm, follower, reply.Ack)
+				Assert(rf.nextIndex[follower] <= log_len + 1, "Ack out of index\n")
+				rf.nextIndex[follower] = reply.Ack
+				rf.matchIndex[follower] = reply.Ack - 1
+				Assert(rf.nextIndex[follower] > 0 && rf.nextIndex[follower] <= log_len + 1, "ack is wrong")
+				// commit log entries
+				rf.commitLogEntries()
+			} else {
+				// DPrintf("%v(%v) recv suggest index %v for %v\n", rf.me, rf.currentTerm, reply.SuggestIndex, follower)
+				// rf.nextIndex[follower] = reply.SuggestIndex
+				
+				// 查找第一个大于xterm的term的下标，二分法
+				log_len := rf.logLength()
+				l := 1
+				r := log_len + 1
+				
+				for l < r {
+					mid := (l + r) >> 1
+					if rf.log[mid].Term <= reply.XTerm {
+						l = mid + 1
 					} else {
-						if rf.log[r - 1].Term != reply.XTerm {
-							rf.nextIndex[follower] = reply.XIndex
-						} else {
-							rf.nextIndex[follower] = r - 1
-						}
-					} 
-
-					if rf.nextIndex[follower] > reply.XLen + 1 {
-						rf.nextIndex[follower] = reply.XLen + 1 
+						r = mid
 					}
-					
-					// rf.nextIndex[follower]--
-					Assert(rf.nextIndex[follower] > 0 && rf.nextIndex[follower] <= rf.logLength() + 1, "suggest index is wrong")
-
 				}
-			} else if reply.Term > rf.currentTerm {
-				rf.currentTerm = reply.Term
-				DPrintf("%v(%v) recv log reply %v(%v), convert to follower\n", rf.me, rf.currentTerm, follower, reply.Term)
-				rf.convertToFollower()
-				rf.persist()
+
+				if r == 1 {
+					rf.nextIndex[follower] = 1
+				} else {
+					if rf.log[r - 1].Term != reply.XTerm {
+						rf.nextIndex[follower] = reply.XIndex
+					} else {
+						rf.nextIndex[follower] = r - 1
+					}
+				} 
+
+				if rf.nextIndex[follower] > reply.XLen + 1 {
+					rf.nextIndex[follower] = reply.XLen + 1 
+				}
+				
+				// rf.nextIndex[follower]--
+				Assert(rf.nextIndex[follower] > 0 && rf.nextIndex[follower] <= rf.logLength() + 1, "suggest index is wrong")
+
 			}
-		} 
+		} else if reply.Term > rf.currentTerm {
+			rf.currentTerm = reply.Term
+			DPrintf("%v(%v) recv log reply %v(%v), convert to follower\n", rf.me, rf.currentTerm, follower, reply.Term)
+			rf.convertToFollower()
+			rf.persist()
+		}
 	}(follower, &args, rf)
 }
 
@@ -733,7 +750,7 @@ func (rf *Raft) ticker() {
 					return electionTimeout()
 				}
 			}()
-			// fmt.Printf("%d(%v) is alive\n", rf.me, isLeader)
+			fmt.Printf("%d timeout after %v\n", rf.me, delay)
 
 			timer.Reset(time.Duration(delay) * time.Millisecond)
 			if (!isLeader) {
