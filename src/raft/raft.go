@@ -25,7 +25,7 @@ import (
 	"time"
 	"6.5840/labgob"
 	"6.5840/labrpc"
-	"fmt"
+	// "fmt"
 )
 
 
@@ -73,6 +73,7 @@ type Raft struct {
 	dead      int32               // set by Kill()
 
 	n		  int
+	Timeout	  int64
 	// Your data here (3A, 3B, 3C).
 	// Look at the paper's Figure 2 for a description of what
 	// state a Raft server must maintain.
@@ -104,6 +105,8 @@ type Raft struct {
 	lastSnapshotIndex	int
 	lastSnapshotTerm	int
 	snapshot			[]byte
+
+	// snapshotInstalled   bool // 可能多次接收到snapshot，使用通道传递
 
 	TimeBefore          int64
 }
@@ -157,9 +160,9 @@ func (rf *Raft) readPersist(data []byte) {
 	   d.Decode(&rf.log) != nil || d.Decode(&rf.lastSnapshotIndex) != nil || d.Decode(&rf.lastSnapshotTerm) != nil {
 		Assert(false, "readPersist error\n")
 	} 
-
-	if rf.lastSnapshotIndex != 0 && d.Decode(&rf.snapshot) != nil {
-		Assert(false, "readPersist error\n")
+	rf.commitIndex = rf.lastSnapshotIndex
+	if rf.lastSnapshotIndex != 0 && rf.persister.SnapshotSize() != 0 {
+		rf.snapshot = rf.persister.ReadSnapshot()
 	}
 }
 
@@ -267,9 +270,11 @@ func (rf *Raft)convertToFollower() {
 	rf.votesNumber = 0
 
 	// 状态发生改变
-	go func(me int) { rf.sigChan <- struct{}{}
-	DPrintf("%v change to follower\n",me)
-	} (rf.me)
+	// go func(me int) { rf.sigChan <- struct{}{}
+	// DPrintf("%v change to follower\n",me)
+	// } (rf.me)
+	rf.Timeout = getNow() + electionTimeout()
+	DPrintf("%v election timeout %v\n", rf.me, rf.Timeout - getNow())
 }
 
 
@@ -290,7 +295,8 @@ func (rf *Raft) convertToLeader() {
 	}
 
 	// 状态发生改变
-	go func() { rf.sigChan <- struct{}{} } ()
+	// go func() { rf.sigChan <- struct{}{} } ()
+	rf.Timeout = getNow() + heartbeatTimeout()
 }
 
 
@@ -307,6 +313,7 @@ func (rf *Raft)apply(n int, arr []ApplyMsg) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	rf.lastApplied += n
+	// rf.commitIndex += n
 }
 
 // 检查哪些entry可以提交，调用时需要已经持有rf的锁
@@ -349,7 +356,6 @@ func (rf *Raft)commitLogEntries() {
 		}
 		go rf.apply(i - rf.commitIndex, msgArr[:])
 		rf.commitIndex = i
-
 		// rf.lastApplied = i
 
 		DPrintf("%v(%v) update commit index %v\n", rf.me, rf.currentTerm, i)
@@ -366,6 +372,10 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	DPrintf("%v rpc get call request vote lock -> %v\n", args.CandidateId, rf.me)
+
+	if rf.killed() {
+		return
+	}
 
 	// DPrintf("%v(%v %v) recv request vote from %v(%v)\n", rf.me, rf.currentTerm, rf.currentRole, args.CandidateId, args.Term)
 
@@ -404,10 +414,14 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
 	needPersistence := false
 
-	DPrintf("%v rpc want call append entries -> %v\n", args.LeaderId, rf.me)
+	// DPrintf("%v rpc want call append entries -> %v\n", args.LeaderId, rf.me)
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	DPrintf("%v rpc get call append entries lock -> %v\n", args.LeaderId, rf.me)
+	// DPrintf("%v rpc get call append entries lock -> %v\n", args.LeaderId, rf.me)
+
+	if rf.killed() {
+		return
+	}
 
 	if rf.currentTerm < args.Term  {
 		rf.currentTerm = args.Term
@@ -515,10 +529,14 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 func (rf *Raft) InstallSnapshot(args *InstallSnapshotRequest, reply *InstallSnapshotReply) {
 	needPersistence := false
 
-	DPrintf("%v rpc want call install snapshot -> %v\n", args.LeaderId, rf.me)
+	// DPrintf("%v rpc want call install snapshot -> %v\n", args.LeaderId, rf.me)
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	DPrintf("%v rpc get call install snapshot lock -> %v\n", args.LeaderId, rf.me)
+	// DPrintf("%v rpc get call install snapshot lock -> %v\n", args.LeaderId, rf.me)
+
+	if rf.killed() {
+		return
+	}
 
 	if rf.currentTerm < args.Term  {
 		rf.currentTerm = args.Term
@@ -560,15 +578,11 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotRequest, reply *InstallSnap
 		rf.persist()
 	}
 
-	go func() {
-		DPrintf("want apply snapshot\n")
-		rf.mu.Lock()
-		defer rf.mu.Unlock()
-		DPrintf("get apply snapshot lock\n")
-
-		
-		rf.applyCh <- ApplyMsg {SnapshotValid: true, Snapshot: rf.snapshot, SnapshotTerm: rf.lastSnapshotTerm, SnapshotIndex: rf.lastSnapshotIndex}
-	}()
+	// snapshot的msg单独协程提交
+	msg := &ApplyMsg{SnapshotValid: true, Snapshot: rf.snapshot, SnapshotTerm: rf.lastSnapshotTerm, SnapshotIndex: rf.lastSnapshotIndex}
+	go func(msg * ApplyMsg) {
+		rf.applyCh <- *msg
+	}(msg)
 }
 
 
@@ -602,10 +616,10 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotRequest, reply *InstallSnap
 func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *RequestVoteReply) {
 	ok := rf.peers[server].Call("Raft.RequestVote", args, reply)
 
-	DPrintf("%v want deal request vote reply -> %v\n", rf.me, server)
+	// DPrintf("%v want deal request vote reply -> %v\n", rf.me, server)
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	DPrintf("%v get request vote reply lock -> %v\n", rf.me, server)
+	// DPrintf("%v get request vote reply lock -> %v\n", rf.me, server)
 
 
 
@@ -644,12 +658,12 @@ func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *Ap
 		return
 	}
 	
-	DPrintf("%v want deal send log reply -> %v\n", rf.me, server)
+	// DPrintf("%v want deal send log reply -> %v\n", rf.me, server)
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	DPrintf("%v get send log reply lock -> %v\n", rf.me, server)
+	// DPrintf("%v get send log reply lock -> %v\n", rf.me, server)
 
-	DPrintf("%v(%v) deal append entries reply\n", rf.me, rf.currentTerm)
+	// DPrintf("%v(%v) deal append entries reply\n", rf.me, rf.currentTerm)
 	log_len := rf.logLength()
 	if reply.Term == rf.currentTerm && rf.currentRole == Leader {
 		Assert(rf.me == rf.currentLeader, "Leader is me\n")
@@ -709,7 +723,7 @@ func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *Ap
 		rf.convertToFollower()
 		rf.persist()
 	}
-	DPrintf("%v(%v) deal append entries reply done\n", rf.me, rf.currentTerm)
+	// DPrintf("%v(%v) deal append entries reply done\n", rf.me, rf.currentTerm)
 }
 
 
@@ -721,10 +735,10 @@ func (rf *Raft) sendInstallSnapshot(server int, args *InstallSnapshotRequest, re
 		return
 	}
 
-	DPrintf("%v want deal install snap reply -> %v\n", rf.me, server)
+	// DPrintf("%v want deal install snap reply -> %v\n", rf.me, server)
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	DPrintf("%v get install snap reply lock -> %v\n", rf.me, server)
+	// DPrintf("%v get install snap reply lock -> %v\n", rf.me, server)
 	if reply.Term > rf.currentTerm {
 		rf.convertToFollower()
 		rf.currentTerm = reply.Term
@@ -738,10 +752,14 @@ func (rf *Raft) sendInstallSnapshot(server int, args *InstallSnapshotRequest, re
 func (rf *Raft)broadcastHeartBeat() {
 	DPrintf("%v broadcast log \n", rf.me)
 
-	rf.mu.Lock()
-	defer rf.mu.Unlock()
+	// rf.mu.Lock()
+	// defer rf.mu.Unlock()
 
-	fmt.Printf("%v(%v) duration %v\n", rf.me, rf.currentRole, time.Now().UnixMilli() - rf.TimeBefore)
+	if rf.killed() {
+		return
+	}
+
+	// fmt.Printf("%v(%v) duration %v\n", rf.me, rf.currentRole, time.Now().UnixMilli() - rf.TimeBefore)
 	rf.TimeBefore = time.Now().UnixMilli()
 	if rf.currentRole != Leader {
 		return
@@ -755,14 +773,19 @@ func (rf *Raft)broadcastHeartBeat() {
 		go rf.replicateLog(follower)
 	}
 	DPrintf("%v broadcast log done \n", rf.me)
+	rf.Timeout = getNow() + heartbeatTimeout()
 }
 
 func (rf *Raft)startElection() {
 	needPersistence := false
 
 	DPrintf("%v want to election...\n", rf.me)
-	rf.mu.Lock()
-	defer rf.mu.Unlock()
+	// rf.mu.Lock()
+	// defer rf.mu.Unlock()
+
+	if rf.killed() {
+		return
+	}
 
 	if rf.currentRole == Leader {
 		return
@@ -784,8 +807,6 @@ func (rf *Raft)startElection() {
 		lastTerm = rf.lastSnapshotTerm
 	}
 
-	
-	
 	for follower, _ := range rf.peers {
 		if follower == rf.me {
 			continue
@@ -798,6 +819,7 @@ func (rf *Raft)startElection() {
 	if needPersistence {
 		rf.persist()
 	}
+	rf.Timeout = getNow() + electionTimeout()
 }
 
 
@@ -858,12 +880,16 @@ func (rf *Raft) killed() bool {
 	return z == 1
 }
 
-func electionTimeout() int {
-	return int(500 + (rand.Int63() % 500))
+func electionTimeout() int64 {
+	return 500 + (rand.Int63() % 500)
 }
 
-func heartbeatTimeout() int {
-	return int( 70 + (rand.Int63() % 35))
+func heartbeatTimeout() int64 {
+	return 70 + (rand.Int63() % 35)
+}
+
+func getNow() int64 {
+	return time.Now().UnixMilli()
 }
 
 func (rf *Raft)replicateLog(follower int) {
@@ -931,77 +957,32 @@ func (rf *Raft)replicateLog(follower int) {
 	go rf.sendAppendEntries(follower, args, reply) 
 }
 
+
 func (rf *Raft) ticker() {
-	timer := time.NewTimer(time.Duration(electionTimeout())  * time.Millisecond)  
-
-	var set_  int64
-
 	for rf.killed() == false {
-
 		// Your code here (3A)
 		// Check if a leader election should be started.
-		// for {
-			// 读取当前状态
-			_, isLeader := rf.GetState()
-			delay := func() int {  
-				if isLeader {
-					return heartbeatTimeout()
-				} else {
-					return electionTimeout()
-				}
-			}()
-			if isLeader {
-				set_ = time.Now().UnixMilli()
-				fmt.Printf("%d timeout after %v\n", rf.me, delay)
-			}
-			timer.Reset(time.Duration(delay) * time.Millisecond)
+		DPrintf("%v ticker\n", rf.me)
+		rf.mu.Lock()
 
-			if (!isLeader) {
-				select {
-				case <-timer.C:
-					// fmt.Printf("T %d: %d restart election\n", rf.currentTerm, rf.me)
-					select {
-					case <-rf.sigChan:
-						DPrintf("%v timer and sigchan\n", rf.me)
-						if _, isLeader := rf.GetState(); isLeader {
-							// fmt.Printf("T %d: %d is leader\n", rf.currentTerm, rf.me)
-							go rf.broadcastHeartBeat()
-						}
-					default:
-						go rf.startElection()
-					}
-				case <-rf.sigChan:
-					// 如果成为leader
-					// timer.Stop()
-					DPrintf("%v got sig\n", rf.me)
-					if _, isLeader := rf.GetState(); isLeader {
-						// fmt.Printf("T %d: %d is leader\n", rf.currentTerm, rf.me)
-						go rf.broadcastHeartBeat()
-					}
-					
-				}
+		if getNow() >= rf.Timeout {
+			// start leader election
+		DPrintf("%v timeout\n", rf.me)
+
+			if rf.currentRole == Leader {
+				rf.broadcastHeartBeat()
 			} else {
-				// fmt.Printf("T %d: %d is leader\n", rf.currentTerm, rf.me)
-
-				select {
-				case <-timer.C:
-					// leader广播heartbeat消息
-					// timer.Stop()
-					fmt.Printf("%v broadcast timeout %v\n", rf.me, time.Now().UnixMilli() - set_)
-					go rf.broadcastHeartBeat()
-
-				case <-rf.sigChan:
-					// timer.Stop()
-					// DPrintf("T %d: %d %d get sigChan\n", rf.currentTerm, rf.currentRole, rf.me)
-				}
+				rf.startElection()
 			}
-		// }
-			timer.Stop()
+		} else {
+			DPrintf("%v continue\n", rf.me)
+		}
 
+		rf.mu.Unlock()
 		// pause for a random amount of time between 50 and 350
-			// milliseconds.
-			ms := 50 + (rand.Int63() % 300)
-			time.Sleep(time.Duration(ms) * time.Millisecond)
+		// milliseconds.
+		ms := 50 + (rand.Int63() % 300)
+		time.Sleep(time.Duration(ms) * time.Millisecond)
 	}
 }
 
@@ -1047,7 +1028,6 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	// start ticker goroutine to start elections
 	go rf.ticker()
-
 
 	return rf
 }
