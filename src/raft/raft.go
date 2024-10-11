@@ -26,6 +26,9 @@ import (
 	"6.5840/labgob"
 	"6.5840/labrpc"
 	// "fmt"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
 )
 
 
@@ -95,9 +98,6 @@ type Raft struct {
 	nextIndex			[]int
 	matchIndex			[]int
 
-	// 当状态发生变化时，如选票数足够以及角色变化，则通过其发送信号给ticker协程
-	sigChan				chan struct{}
-
 	// 传送apply Msg的chan
 	applyCh				chan ApplyMsg
 
@@ -161,6 +161,7 @@ func (rf *Raft) readPersist(data []byte) {
 		Assert(false, "readPersist error\n")
 	} 
 	rf.commitIndex = rf.lastSnapshotIndex
+	rf.lastApplied = rf.lastSnapshotIndex
 	if rf.lastSnapshotIndex != 0 && rf.persister.SnapshotSize() != 0 {
 		rf.snapshot = rf.persister.ReadSnapshot()
 	}
@@ -269,10 +270,6 @@ func (rf *Raft)convertToFollower() {
 	}
 	rf.votesNumber = 0
 
-	// 状态发生改变
-	// go func(me int) { rf.sigChan <- struct{}{}
-	// DPrintf("%v change to follower\n",me)
-	// } (rf.me)
 	rf.Timeout = getNow() + electionTimeout()
 	DPrintf("%v election timeout %v\n", rf.me, rf.Timeout - getNow())
 }
@@ -294,8 +291,6 @@ func (rf *Raft) convertToLeader() {
 		}
 	}
 
-	// 状态发生改变
-	// go func() { rf.sigChan <- struct{}{} } ()
 	rf.Timeout = getNow() + heartbeatTimeout()
 }
 
@@ -769,8 +764,55 @@ func (rf *Raft)broadcastHeartBeat() {
 		if follower == rf.me {
 			continue
 		}
-		// 开启一个协程发送并处理返回值
-		go rf.replicateLog(follower)
+		if rf.killed() {
+			return
+		}
+		if rf.nextIndex[follower] <= rf.lastSnapshotIndex {
+			args := &InstallSnapshotRequest{Term: rf.currentTerm, LeaderId: rf.me, LastIncludedIndex: rf.lastSnapshotIndex, LastIncludedTerm: rf.lastSnapshotTerm}
+			args.Data = make([]byte, len(rf.snapshot))
+			copy(args.Data, rf.snapshot)
+			DPrintf("%v(%v) send snapshot to %v, next Index %v snapshot index %v\n", rf.me, rf.currentTerm, follower, rf.nextIndex[follower], rf.lastSnapshotIndex)
+			reply := &InstallSnapshotReply{}
+			
+			go rf.sendInstallSnapshot(follower, args, reply)
+		} else {
+			log_len := rf.logLength()
+			args := &AppendEntriesArgs{Term: rf.currentTerm, LeaderId: rf.me, LeaderCommit: rf.commitIndex}
+			Assert(args.PrevLogIndex >= 0 && args.PrevLogIndex - rf.lastSnapshotIndex <= log_len, "PrevLogIndex greater out of index\n")
+
+			args.PrevLogIndex = rf.nextIndex[follower] - 1
+			if args.PrevLogIndex - rf.lastSnapshotIndex > 0 {
+				args.PrevLogTerm = rf.log[args.PrevLogIndex - rf.lastSnapshotIndex].Term 	
+			} else {
+				args.PrevLogTerm = rf.lastSnapshotTerm
+			}
+
+			// leader不能复制不包含当前term的entry的log
+			// 但是已经提交的可以
+			lastEntryIndex := func() int {
+				if rf.log[log_len].Term == rf.currentTerm { 
+					return log_len + rf.lastSnapshotIndex
+				} else {
+					return rf.commitIndex
+				}
+			}()
+			
+			n := lastEntryIndex - rf.nextIndex[follower] + 1
+			if n > 0 {
+				args.Entries = make([]LogEntry, n)
+				copy(args.Entries, rf.log[rf.nextIndex[follower] - rf.lastSnapshotIndex : lastEntryIndex + 1 - rf.lastSnapshotIndex])
+			} else {
+				n = 0
+			}
+			
+			DPrintf("%v(%v) -> %v entries %v\n", rf.me, rf.currentTerm, follower, len(args.Entries))
+			Assert(len(args.Entries) + args.PrevLogIndex <= rf.lastSnapshotIndex + log_len, "set args error")
+
+			DPrintf("%v(%v %v) send log to %v, prev index %v entry %v\n", rf.me, rf.currentTerm, rf.currentRole, follower, args.PrevLogIndex, len(args.Entries))
+			reply := &AppendEntriesReply{}
+			
+			go rf.sendAppendEntries(follower, args, reply) 
+		}
 	}
 	DPrintf("%v broadcast log done \n", rf.me)
 	rf.Timeout = getNow() + heartbeatTimeout()
@@ -892,71 +934,6 @@ func getNow() int64 {
 	return time.Now().UnixMilli()
 }
 
-func (rf *Raft)replicateLog(follower int) {
-	DPrintf("%v want replicate log -> %v\n", rf.me, follower)
-	rf.mu.Lock()
-	defer rf.mu.Unlock()
-	DPrintf("%v get rep log lock -> %v\n", rf.me, follower)
-
-	if rf.currentRole != Leader {
-		return
-	}
-	Assert(rf.me == rf.currentLeader, "only leader can replicate log\n")
-
-	// 发送snapshot替代
-	if rf.nextIndex[follower] <= rf.lastSnapshotIndex {
-		args := &InstallSnapshotRequest{Term: rf.currentTerm, LeaderId: rf.me, LastIncludedIndex: rf.lastSnapshotIndex, LastIncludedTerm: rf.lastSnapshotTerm}
-		args.Data = make([]byte, len(rf.snapshot))
-		copy(args.Data, rf.snapshot)
-		DPrintf("%v(%v) send snapshot to %v, next Index %v snapshot index %v\n", rf.me, rf.currentTerm, follower, rf.nextIndex[follower], rf.lastSnapshotIndex)
-		reply := &InstallSnapshotReply{}
-		
-		go rf.sendInstallSnapshot(follower, args, reply)
-
-		return
-	}
-
-	log_len := rf.logLength()
-	args := &AppendEntriesArgs{Term: rf.currentTerm, LeaderId: rf.me, LeaderCommit: rf.commitIndex}
-	Assert(args.PrevLogIndex >= 0 && args.PrevLogIndex - rf.lastSnapshotIndex <= log_len, "PrevLogIndex greater out of index\n")
-
-	args.PrevLogIndex = rf.nextIndex[follower] - 1
-	if args.PrevLogIndex - rf.lastSnapshotIndex > 0 {
-		args.PrevLogTerm = rf.log[args.PrevLogIndex - rf.lastSnapshotIndex].Term 	
-	} else {
-		args.PrevLogTerm = rf.lastSnapshotTerm
-	}
-
-	// leader不能复制不包含当前term的entry的log
-	// 但是已经提交的可以
-	lastEntryIndex := func() int {
-		if rf.log[log_len].Term == rf.currentTerm { 
-			return log_len + rf.lastSnapshotIndex
-		} else {
-			return rf.commitIndex
-		}
-	}()
-	// DPrintf("nextidx %v loglen %v lastidx %v comidx %v\n", rf.nextIndex[follower], log_len, rf.lastSnapshotIndex, rf.commitIndex)
-	// for i := rf.nextIndex[follower]; i <= lastEntryIndex; i++ {
-	// 	args.Entries = append(args.Entries, rf.log[i - rf.lastSnapshotIndex])
-	// }
-	n := lastEntryIndex - rf.nextIndex[follower] + 1
-	if n > 0 {
-		args.Entries = make([]LogEntry, n)
-		copy(args.Entries, rf.log[rf.nextIndex[follower] - rf.lastSnapshotIndex : lastEntryIndex + 1 - rf.lastSnapshotIndex])
-	} else {
-		n = 0
-	}
-	
-	DPrintf("%v(%v) -> %v entries %v\n", rf.me, rf.currentTerm, follower, len(args.Entries))
-	Assert(len(args.Entries) + args.PrevLogIndex <= rf.lastSnapshotIndex + log_len, "set args error")
-
-	DPrintf("%v(%v %v) send log to %v, prev index %v entry %v\n", rf.me, rf.currentTerm, rf.currentRole, follower, args.PrevLogIndex, len(args.Entries))
-	reply := &AppendEntriesReply{}
-	
-	go rf.sendAppendEntries(follower, args, reply) 
-}
-
 
 func (rf *Raft) ticker() {
 	for rf.killed() == false {
@@ -981,8 +958,11 @@ func (rf *Raft) ticker() {
 		rf.mu.Unlock()
 		// pause for a random amount of time between 50 and 350
 		// milliseconds.
-		ms := 50 + (rand.Int63() % 300)
-		time.Sleep(time.Duration(ms) * time.Millisecond)
+		// 万恶之源，如果是leader不能sleep，会导致heartbeat间隔边长
+		// 工作的协程数量降低，导致3D的时间过长
+		// 间接可能导致其他server“造反”选举新的leader……
+		// ms := 50 + (rand.Int63() % 300)
+		// time.Sleep(time.Duration(ms) * time.Millisecond)
 	}
 }
 
@@ -1019,12 +999,14 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.nextIndex  = make([]int, rf.n)
 	rf.matchIndex = make([]int, rf.n)
 
-	rf.sigChan = make(chan struct{})
-
 	rf.applyCh = applyCh
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
+
+	go func() {
+		log.Println(http.ListenAndServe(":6061", nil))
+		}()
 
 	// start ticker goroutine to start elections
 	go rf.ticker()
