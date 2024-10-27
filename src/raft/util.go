@@ -12,7 +12,7 @@ func DPrintf(format string, a ...interface{}) {
 }
 
 func Assert(condition bool, msg string) {
-	if !condition {
+	if Debug && !condition {
 		log.Fatalf("Assertion failed: %s", msg)
 	}
 }
