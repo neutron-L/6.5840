@@ -23,7 +23,7 @@ type KVServer struct {
 	Store 	map[string]string
 	Seen 	map[int64]uint32    	// 客户id->最新请求seq
 	// Acks    map[int64]uint32    	// 客户端最近ack的序号
-	History map[int64]int 	// 历史记录，append使用，记录下标
+	History map[int64]string 	// 历史记录，append使用，记录下标
 }
 
 
@@ -47,7 +47,8 @@ func (kv *KVServer) Put(args *PutAppendArgs, reply *PutAppendReply) {
 	} 
 	if args.Seqno >= kv.Seen[args.ClientId] {
 		kv.Seen[args.ClientId] = args.Seqno + 1
-		kv.History[args.ClientId] = len(args.Value)
+		// kv.History[args.ClientId] = len(args.Value)
+		kv.History[args.ClientId] = ""
 		// reply.Value = kv.Store[args.Key]
 		kv.Store[args.Key] = args.Value
 	// delete(kv.History[args.ClientId], args.Seqno)
@@ -68,12 +69,14 @@ func (kv *KVServer) Append(args *PutAppendArgs, reply *PutAppendReply) {
 	} 
 	if args.Seqno >= kv.Seen[args.ClientId] {
 		kv.Seen[args.ClientId] = args.Seqno + 1
-		kv.History[args.ClientId] = len(kv.Store[args.Key])
+		// kv.History[args.ClientId] = len(kv.Store[args.Key])
+		kv.History[args.ClientId] = kv.Store[args.Key]
 		reply.Value = kv.Store[args.Key]
 		kv.Store[args.Key] = kv.Store[args.Key] + args.Value
 		// delete(kv.History[args.ClientId], args.Seqno)
 	} else {
-		reply.Value = kv.Store[args.Key][:kv.History[args.ClientId]]
+		// reply.Value = kv.Store[args.Key][:kv.History[args.ClientId]]
+		reply.Value = kv.History[args.ClientId]
 	}
 }
 
@@ -84,7 +87,7 @@ func StartKVServer() *KVServer {
 	kv.Store = make(map[string]string)
 	kv.Seen = make(map[int64]uint32)
 	// kv.Acks = make(map[int64]uint32)
-	kv.History = make(map[int64]int)
+	kv.History = make(map[int64]string)
 
 	return kv
 }
