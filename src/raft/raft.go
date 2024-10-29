@@ -26,9 +26,9 @@ import (
 	"6.5840/labgob"
 	"6.5840/labrpc"
 	// "fmt"
-	"log"
-	"net/http"
-	_ "net/http/pprof"
+	// "log"
+	// "net/http"
+	// _ "net/http/pprof"
 )
 
 
@@ -1019,9 +1019,9 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
-	go func() {
-		log.Println(http.ListenAndServe(":6061", nil))
-		}()
+	// go func() {
+	// 	log.Println(http.ListenAndServe(":6061", nil))
+	// 	}()
 
 	// start ticker goroutine to start elections
 	go rf.ticker()
