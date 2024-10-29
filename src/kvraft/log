@@ -1,0 +1,55 @@
+Test: one client (4A) ...
+2024/10/29 18:52:14 Client[131876043317836258]->Server[0]: Put seqno(1) key(0)
+2024/10/29 18:52:14 Server[4]->Client[131876043317836258]: got Put not leader
+2024/10/29 18:52:15 Client[131876043317836258]->Server[1]: Put seqno(1) key(0)
+2024/10/29 18:52:15 Server[3]->Client[131876043317836258]: got Put not leader
+labgob warning: Decoding into a non-default variable/field Err may not work
+2024/10/29 18:52:16 Client[131876043317836258]->Server[2]: Put seqno(1) key(0)
+2024/10/29 18:52:16 [0]execute Put: entry.Seqno = 0; op.Seqno = 1
+2024/10/29 18:52:16 Server[0]->Client[131876043317836258]: Put reply 1
+2024/10/29 18:52:16 Client[131876043317836258]:  Put seqno(1) key(0)
+2024/10/29 18:52:16 Client[131876043317836258]->Server[2]: Get seqno(2) key(0)
+2024/10/29 18:52:16 [3]execute Put: entry.Seqno = 0; op.Seqno = 1
+2024/10/29 18:52:16 [4]execute Put: entry.Seqno = 0; op.Seqno = 1
+2024/10/29 18:52:16 [0]execute Get: entry.Seqno = 0; op.Seqno = 2
+2024/10/29 18:52:16 Server[0]->Client[131876043317836258]: Get reply 2
+2024/10/29 18:52:16 Client[131876043317836258]:  Get seqno(2) key(0) reply 
+2024/10/29 18:52:16 Client[131876043317836258]->Server[2]: Append seqno(3) key(0)
+2024/10/29 18:52:16 [1]execute Put: entry.Seqno = 0; op.Seqno = 1
+2024/10/29 18:52:16 [2]execute Put: entry.Seqno = 0; op.Seqno = 1
+2024/10/29 18:52:16 [3]execute Get: entry.Seqno = 0; op.Seqno = 2
+2024/10/29 18:52:16 [4]execute Get: entry.Seqno = 0; op.Seqno = 2
+2024/10/29 18:52:16 [0]execute Append: entry.Seqno = 0; op.Seqno = 3
+2024/10/29 18:52:16 Server[0]->Client[131876043317836258]: Append reply 3
+2024/10/29 18:52:16 Client[131876043317836258]:  Append seqno(3) key(0)
+2024/10/29 18:52:16 Client[131876043317836258]->Server[2]: Get seqno(4) key(0)
+2024/10/29 18:52:16 [1]execute Get: entry.Seqno = 0; op.Seqno = 2
+2024/10/29 18:52:16 [2]execute Get: entry.Seqno = 0; op.Seqno = 2
+2024/10/29 18:52:16 [0]execute Get: entry.Seqno = 0; op.Seqno = 4
+2024/10/29 18:52:16 Server[0]->Client[131876043317836258]: Get reply 4
+2024/10/29 18:52:16 Client[131876043317836258]:  Get seqno(4) key(0) reply 
+2024/10/29 18:52:16 [3]execute Append: entry.Seqno = 0; op.Seqno = 3
+2024/10/29 18:52:16 [4]execute Append: entry.Seqno = 0; op.Seqno = 3
+2024/10/29 18:52:16 [1]execute Append: entry.Seqno = 0; op.Seqno = 3
+2024/10/29 18:52:16 [2]execute Append: entry.Seqno = 0; op.Seqno = 3
+2024/10/29 18:52:16 [4]execute Get: entry.Seqno = 0; op.Seqno = 4
+2024/10/29 18:52:16 [1]execute Get: entry.Seqno = 0; op.Seqno = 4
+2024/10/29 18:52:16 [2]execute Get: entry.Seqno = 0; op.Seqno = 4
+2024/10/29 18:52:16 [3]execute Get: entry.Seqno = 0; op.Seqno = 4
+2024/10/29 18:52:19 Client[3478994519608673872]->Server[0]: Get seqno(1) key(0)
+2024/10/29 18:52:19 Server[4]->Client[3478994519608673872]: got Get not leader
+2024/10/29 18:52:20 Client[3478994519608673872]->Server[1]: Get seqno(2) key(0)
+2024/10/29 18:52:20 Server[1]->Client[3478994519608673872]: got Get not leader
+2024/10/29 18:52:21 Client[3478994519608673872]->Server[2]: Get seqno(2) key(0)
+2024/10/29 18:52:21 Server[2]->Client[3478994519608673872]: got Get not leader
+2024/10/29 18:52:22 Client[3478994519608673872]->Server[3]: Get seqno(2) key(0)
+2024/10/29 18:52:22 [0]execute Get: entry.Seqno = 0; op.Seqno = 1
+2024/10/29 18:52:22 Server[0]->Client[3478994519608673872]: Get reply 1
+2024/10/29 18:52:22 Client[3478994519608673872]:  Get seqno(1) key(0) reply 
+--- FAIL: TestBasic4A (8.10s)
+    test_test.go:293: get wrong value, key 0, wanted:
+        x 0 0 y
+        , got
+        
+    test_test.go:126: failure
+    test_test.go:144: 0 missing element x 0 0 y in Append result 
