@@ -5,6 +5,8 @@ import "crypto/rand"
 import "math/big"
 import "time"
 
+const RetryDelay = 500
+
 
 type Clerk struct {
 	servers []*labrpc.ClientEnd
@@ -23,11 +25,15 @@ func nrand() int64 {
 	return x
 }
 
+var nextId int64 = 100
+
 func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
 	ck.servers = servers
 	// You'll have to add code here.
-	ck.ClientId = nrand()
+	// ck.ClientId = nrand()
+	ck.ClientId = nextId
+	nextId++
 	ck.Seqno = 1
 	ck.CurrentLeader = 0
 	ck.ServerNum = len(servers)
@@ -53,34 +59,34 @@ func (ck *Clerk) Get(key string) string {
 	reply := GetReply{}
 	ck.Seqno++
 
-	DPrintf("Client[%v]->Server[%v]: %v seqno(%v) key(%v)", ck.ClientId, ck.CurrentLeader, GET, args.Seqno, key)
+	DPrintf("[%v] Client[%v]->Server[%v]: %v key(%v)", args.Seqno, ck.ClientId, ck.CurrentLeader, GET, key)
 	ok := ck.servers[ck.CurrentLeader].Call("KVServer.Get", &args, &reply)
 	if ok {
 		if reply.Err != ErrWrongLeader {
-			DPrintf("Client[%v]:  %v seqno(%v) key(%v) reply %v", ck.ClientId, GET, args.Seqno, key, reply.Value)
+			DPrintf("[%v] Client[%v]: %v key(%v) reply %v", args.Seqno, ck.ClientId, GET, key, reply.Value)
 			return reply.Value
 		} 
-		ck.CurrentLeader = (ck.CurrentLeader + 1) % ck.ServerNum
 	}
-
+	ck.CurrentLeader = (ck.CurrentLeader + 1) % ck.ServerNum
 
 	// 定义一个定时器，这里用time.Tick创建一个每秒触发的定时器作为示例  
 	// 注意：time.Tick不会停止，除非我们手动停止它，但这里我们使用它来模拟每次重试的间隔  
-	ticker := time.Tick(1 * time.Second)  
+	ticker := time.Tick(RetryDelay * time.Millisecond)  
   
 	// 使用for循环来管理重试逻辑  
 	for {  
 		select {  
 		case <-ticker:  
-			DPrintf("Client[%v]->Server[%v]: %v seqno(%v) key(%v)", ck.ClientId, ck.CurrentLeader, GET, ck.Seqno, key)
+			DPrintf("[%v] Client[%v]->Server[%v]: %v key(%v)", args.Seqno, ck.ClientId, ck.CurrentLeader, GET, key)
 			ok = ck.servers[ck.CurrentLeader].Call("KVServer.Get", &args, &reply)
 			if ok {
 				if reply.Err != ErrWrongLeader {
-					DPrintf("Client[%v]:  %v seqno(%v) key(%v) reply %v", ck.ClientId, GET, args.Seqno, key, reply.Value)
+					DPrintf("[%v] Client[%v]: %v key(%v) reply %v", args.Seqno, ck.ClientId, GET, key, reply.Value)
+					
 					return reply.Value
 				} 
-				ck.CurrentLeader = (ck.CurrentLeader + 1) % ck.ServerNum
 			}
+			ck.CurrentLeader = (ck.CurrentLeader + 1) % ck.ServerNum
 		}  
 	}  
 	return ""
@@ -100,35 +106,35 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 	reply := PutAppendReply{}
 	ck.Seqno++
 
-	DPrintf("Client[%v]->Server[%v]: %v seqno(%v) key(%v)", ck.ClientId, ck.CurrentLeader, op, args.Seqno, key)
+	DPrintf("[%v] Client[%v]->Server[%v]: %v key(%v)", args.Seqno, ck.ClientId, ck.CurrentLeader, op, key)
 
 	ok := ck.servers[ck.CurrentLeader].Call("KVServer." + op, &args, &reply)
 	if ok {
 		if reply.Err != ErrWrongLeader {
-			DPrintf("Client[%v]:  %v seqno(%v) key(%v)", ck.ClientId, op, args.Seqno, key)
+			DPrintf("[%v] Client[%v]: %v key(%v) reply", args.Seqno, ck.ClientId, op, key)
 			return
 		} 
-		ck.CurrentLeader = (ck.CurrentLeader + 1) % ck.ServerNum
 	}
+	ck.CurrentLeader = (ck.CurrentLeader + 1) % ck.ServerNum
 
 
 	// 定义一个定时器，这里用time.Tick创建一个每秒触发的定时器作为示例  
 	// 注意：time.Tick不会停止，除非我们手动停止它，但这里我们使用它来模拟每次重试的间隔  
-	ticker := time.Tick(1 * time.Second)  
+	ticker := time.Tick(RetryDelay * time.Millisecond)  
   
 	// 使用for循环来管理重试逻辑  
 	for {  
 		select {  
 		case <-ticker:  
-			DPrintf("Client[%v]->Server[%v]: %v seqno(%v) key(%v)", ck.ClientId, ck.CurrentLeader, op, args.Seqno, key)
+			DPrintf("[%v] Client[%v]->Server[%v]: %v key(%v)", args.Seqno, ck.ClientId, ck.CurrentLeader, op, key)
 			ok = ck.servers[ck.CurrentLeader].Call("KVServer." + op, &args, &reply)
 			if ok {
 				if reply.Err != ErrWrongLeader {
-					DPrintf("Client[%v]:  %v seqno(%v) key(%v)", ck.ClientId, op, args.Seqno, key)
+					DPrintf("[%v] Client[%v]: %v key(%v) reply", args.Seqno, ck.ClientId, op, key)
 					return
 				} 
-				ck.CurrentLeader = (ck.CurrentLeader + 1) % ck.ServerNum
 			}
+			ck.CurrentLeader = (ck.CurrentLeader + 1) % ck.ServerNum
 		}  
 	}  
 }
