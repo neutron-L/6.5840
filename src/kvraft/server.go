@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const Debug = true
+const Debug = false
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
 	if Debug {
@@ -34,7 +34,7 @@ const (
     APPEND    string = "Append" 
 )
 
-const Delay = 1
+const Delay = 400
 
 type Op struct {
 	// Your definitions here.
@@ -264,7 +264,7 @@ func (kv *KVServer) executeLoop() {
 		
 					// Assert(kv.History[op.ClientId].Seqno <= op.Seqno, "")
 					entry, ok := kv.History[op.ClientId]
-					if ok && entry.Seqno == op.Seqno {
+					if ok && entry.Seqno >= op.Seqno {
 						DPrintf("[%v]executed: entry.cid = %v; entry.Seqno = %v; op.Seqno = %v", kv.me, op.ClientId, entry.Seqno, op.Seqno)
 						switch op.OpType {
 						case GET:
@@ -312,7 +312,7 @@ func (kv *KVServer) executeLoop() {
 				}
 				break
 			}
-		case <-time.After(Delay * time.Second):
+		case <-time.After(Delay * time.Millisecond):
 			DPrintf("[%v]execute: check alive", kv.me)
 			
 			if kv.killed() {
