@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const Debug = false
+const Debug = true
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
 	if Debug {
@@ -87,7 +87,7 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 		return
 	}
 
-	DPrintf("[%v] Server[%v]->Client[%v]: got %v wait commit", args.Seqno, kv.me, args.ClientId, GET)
+	DPrintf("[%v] Server[%v]: got %v from Client[%v], wait commit", args.Seqno, kv.me, GET, args.ClientId)
 
 	// 使用for循环来管理重试逻辑  
 	for !kv.killed() {  
@@ -141,7 +141,7 @@ func (kv *KVServer) Put(args *PutAppendArgs, reply *PutAppendReply) {
 
 		return
 	}
-	DPrintf("[%v] Server[%v]->Client[%v]: got %v wait commit", args.Seqno, kv.me, args.ClientId, PUT)
+	DPrintf("[%v] Server[%v]: got %v from Client[%v], wait commit", args.Seqno, kv.me, PUT, args.ClientId)
 
 	// 使用for循环等待当前command的执行  
 	for !kv.killed() {  
@@ -193,6 +193,7 @@ func (kv *KVServer) Append(args *PutAppendArgs, reply *PutAppendReply) {
 
 		return
 	}
+	DPrintf("[%v] Server[%v]: got %v from Client[%v], wait commit", args.Seqno, kv.me, APPEND, args.ClientId)
 
 	// 使用for循环等待当前command的执行  
 	for !kv.killed () {  
