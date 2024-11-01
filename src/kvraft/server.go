@@ -1,6 +1,7 @@
 package kvraft
 
 import (
+	"bytes"
 	"6.5840/labgob"
 	"6.5840/labrpc"
 	"6.5840/raft"
@@ -8,9 +9,10 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"os"
 )
 
-const Debug = false
+const Debug = true
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
 	if Debug {
@@ -65,12 +67,38 @@ type KVServer struct {
 
 	// Your definitions here.
 	Store		map[string]string
-	History		map[int64]*Record   // 对于每个client，处理过的请求的序号
+	History		map[int64]Record   // 对于每个client，处理过的请求的序号
 	getCond		*sync.Cond
 	putCond		*sync.Cond
 	appendCond	*sync.Cond
+
+	// Snapshot相关
+	persister *raft.Persister          // Object to hold this peer's persisted state
+	lastApplied   int
+	snapshotCond *sync.Cond
 }
 
+
+func (kv *KVServer) snapshotLoop() {
+	for !kv.killed() {
+		kv.mu.Lock()
+
+		for kv.persister.RaftStateSize() < kv.maxraftstate {
+			kv.snapshotCond.Wait()
+		}
+		DPrintf("Server[%v]: snapshot %v", kv.me, kv.lastApplied)
+		// build snapshot
+		w := new(bytes.Buffer)
+		e := labgob.NewEncoder(w)
+		e.Encode(kv.Store)
+		e.Encode(kv.History)
+		e.Encode(kv.lastApplied)
+
+		kv.rf.Snapshot(kv.lastApplied, w.Bytes())
+
+		kv.mu.Unlock()
+	}
+}
 
 func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 	// Your code here.
@@ -279,8 +307,7 @@ func (kv *KVServer) executeLoop() {
 						}
 					} else {
 						if !ok {
-							kv.History[op.ClientId] = &Record{}
-							entry = kv.History[op.ClientId]
+							entry = Record{}
 						} 
 							
 						entry.Seqno = op.Seqno
@@ -306,6 +333,16 @@ func (kv *KVServer) executeLoop() {
 							break
 						}
 						entry.Value = kv.Store[op.Key]
+						kv.History[op.ClientId] = entry
+					}
+
+					if kv.lastApplied + 1 != msg.CommandIndex {
+						DPrintf("Server[%v]: lastApplied %v, cmdidx %v", kv.me, kv.lastApplied, msg.CommandIndex)
+						Assert(false, "command index error")
+					} 
+					kv.lastApplied = msg.CommandIndex
+					if kv.maxraftstate != -1 && kv.persister.RaftStateSize() >= kv.maxraftstate {
+						kv.snapshotCond.Signal()
 					}
 		
 					kv.mu.Unlock()
@@ -354,13 +391,32 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 
 	// You may need initialization code here.
 	kv.Store = make(map[string]string)
-	kv.History = make(map[int64]*Record)
+	kv.History = make(map[int64]Record)
 
 	kv.getCond = sync.NewCond(&kv.mu)
 	kv.putCond = sync.NewCond(&kv.mu)
 	kv.appendCond = sync.NewCond(&kv.mu)
 
+	kv.lastApplied = 0
+	kv.persister = persister
+	kv.snapshotCond = sync.NewCond(&kv.mu)
+
+	// 读取状态
+	if persister.SnapshotSize() > 0 {
+		snapshot := persister.ReadSnapshot()
+		r := bytes.NewBuffer(snapshot)
+		d := labgob.NewDecoder(r)
+		if d.Decode(&kv.Store) != nil || d.Decode(&kv.History) != nil || d.Decode(&kv.lastApplied) != nil {
+			DPrintf("readPersist error %v\n", persister.SnapshotSize())
+			os.Exit(1)
+		} 
+	}
+
 	go kv.executeLoop()
+
+	if maxraftstate != -1 {
+		go kv.snapshotLoop()
+	}
 
 	return kv
 }
