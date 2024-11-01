@@ -1,9 +1,12 @@
 package kvraft
 
-import "6.5840/labrpc"
-import "crypto/rand"
-import "math/big"
-import "time"
+import (
+	"sync/atomic"
+	"6.5840/labrpc"
+	"crypto/rand"
+	"math/big"
+	"time"
+)
 
 const RetryDelay = 500
 
@@ -59,35 +62,48 @@ func (ck *Clerk) Get(key string) string {
 	reply := GetReply{}
 	ck.Seqno++
 
-	DPrintf("[%v] Client[%v]->Server[%v]: %v key(%v)", args.Seqno, ck.ClientId, ck.CurrentLeader, GET, key)
-	ok := ck.servers[ck.CurrentLeader].Call("KVServer.Get", &args, &reply)
-	if ok {
-		if reply.Err != ErrWrongLeader {
-			DPrintf("[%v] Client[%v]: %v key(%v) reply %v", args.Seqno, ck.ClientId, GET, key, reply.Value)
-			return reply.Value
-		} 
+	type Pair struct {
+		CurLeader  int
+		Value      string
 	}
-	ck.CurrentLeader = (ck.CurrentLeader + 1) % ck.ServerNum
 
-	// 定义一个定时器，这里用time.Tick创建一个每秒触发的定时器作为示例  
-	// 注意：time.Tick不会停止，除非我们手动停止它，但这里我们使用它来模拟每次重试的间隔  
-	ticker := time.Tick(RetryDelay * time.Millisecond)  
-  
+	var done int32 = 0
+	ch := make(chan Pair)
+	defer close(ch)
+
+	go func(server int, ch chan Pair, done *int32, args GetArgs, reply GetReply) {
+		DPrintf("[%v] Client[%v]->Server[%v]: %v key(%v)", args.Seqno, ck.ClientId, server, GET, key)
+		ok := ck.servers[server].Call("KVServer.Get", &args, &reply)
+		if ok && reply.Err != ErrWrongLeader {
+			DPrintf("[%v] Client[%v]: %v key(%v) reply %v", args.Seqno, ck.ClientId, GET, key, reply.Value)
+			if atomic.CompareAndSwapInt32(done, 0, 1) {
+				ch<-Pair{CurLeader: ck.CurrentLeader, Value: reply.Value}
+			}
+		} 
+	}(ck.CurrentLeader, ch, &done, args, reply)
+
 	// 使用for循环来管理重试逻辑  
 	for {  
 		select {  
-		case <-ticker:  
-			DPrintf("[%v] Client[%v]->Server[%v]: %v key(%v)", args.Seqno, ck.ClientId, ck.CurrentLeader, GET, key)
-			ok = ck.servers[ck.CurrentLeader].Call("KVServer.Get", &args, &reply)
-			if ok {
-				if reply.Err != ErrWrongLeader {
-					DPrintf("[%v] Client[%v]: %v key(%v) reply %v", args.Seqno, ck.ClientId, GET, key, reply.Value)
-					
-					return reply.Value
-				} 
-			}
-			ck.CurrentLeader = (ck.CurrentLeader + 1) % ck.ServerNum
-		}  
+			case item := <-ch:  
+				ck.CurrentLeader = item.CurLeader
+
+				return item.Value
+			case <- time.After(RetryDelay * time.Millisecond):
+				ck.CurrentLeader = (ck.CurrentLeader + 1) % ck.ServerNum
+	
+				go func(server int, ch chan Pair, done *int32, args GetArgs, reply GetReply) {
+					DPrintf("[%v] Client[%v]->Server[%v]: %v key(%v)", args.Seqno, ck.ClientId, server, GET, key)
+					ok := ck.servers[server].Call("KVServer.Get", &args, &reply)
+					if ok && reply.Err != ErrWrongLeader {
+						DPrintf("[%v] Client[%v]: %v key(%v) reply %v", args.Seqno, ck.ClientId, GET, key, reply.Value)
+						if atomic.CompareAndSwapInt32(done, 0, 1) {
+							ch<-Pair{CurLeader: ck.CurrentLeader, Value: reply.Value}
+						}
+					} 
+				}(ck.CurrentLeader, ch, &done, args, reply)
+				break
+			}  
 	}  
 	return ""
 }
@@ -106,35 +122,41 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 	reply := PutAppendReply{}
 	ck.Seqno++
 
-	DPrintf("[%v] Client[%v]->Server[%v]: %v key(%v)", args.Seqno, ck.ClientId, ck.CurrentLeader, op, key)
+	var done int32 = 0 
+	ch := make(chan int)
+	defer close(ch)
 
-	ok := ck.servers[ck.CurrentLeader].Call("KVServer." + op, &args, &reply)
-	if ok {
-		if reply.Err != ErrWrongLeader {
+	go func(server int, ch chan int, done *int32, args PutAppendArgs, reply PutAppendReply) {
+		DPrintf("[%v] Client[%v]->Server[%v]: %v key(%v)", args.Seqno, ck.ClientId, server, op, key)
+		ok := ck.servers[server].Call("KVServer." + op, &args, &reply)
+		if ok && reply.Err != ErrWrongLeader {
 			DPrintf("[%v] Client[%v]: %v key(%v) reply", args.Seqno, ck.ClientId, op, key)
-			return
+			if atomic.CompareAndSwapInt32(done, 0, 1) {
+				ch<-ck.CurrentLeader
+			}
 		} 
-	}
-	ck.CurrentLeader = (ck.CurrentLeader + 1) % ck.ServerNum
-
-
-	// 定义一个定时器，这里用time.Tick创建一个每秒触发的定时器作为示例  
-	// 注意：time.Tick不会停止，除非我们手动停止它，但这里我们使用它来模拟每次重试的间隔  
-	ticker := time.Tick(RetryDelay * time.Millisecond)  
-  
+	}(ck.CurrentLeader, ch, &done, args, reply)
+	
 	// 使用for循环来管理重试逻辑  
 	for {  
 		select {  
-		case <-ticker:  
-			DPrintf("[%v] Client[%v]->Server[%v]: %v key(%v)", args.Seqno, ck.ClientId, ck.CurrentLeader, op, key)
-			ok = ck.servers[ck.CurrentLeader].Call("KVServer." + op, &args, &reply)
-			if ok {
-				if reply.Err != ErrWrongLeader {
-					DPrintf("[%v] Client[%v]: %v key(%v) reply", args.Seqno, ck.ClientId, op, key)
-					return
-				} 
-			}
+		case server := <-ch:  
+			ck.CurrentLeader = server
+			return
+		case <- time.After(RetryDelay * time.Millisecond):
 			ck.CurrentLeader = (ck.CurrentLeader + 1) % ck.ServerNum
+
+			go func(server int, ch chan int, done *int32, args PutAppendArgs, reply PutAppendReply) {
+				DPrintf("[%v] Client[%v]->Server[%v]: %v key(%v)", args.Seqno, ck.ClientId, server, op, key)
+				ok := ck.servers[server].Call("KVServer." + op, &args, &reply)
+				if ok && reply.Err != ErrWrongLeader {
+					DPrintf("[%v] Client[%v]: %v key(%v) reply", args.Seqno, ck.ClientId, op, key)
+					if atomic.CompareAndSwapInt32(done, 0, 1) {
+						ch<-ck.CurrentLeader
+					}
+				} 
+			}(ck.CurrentLeader, ch, &done, args, reply)
+			break
 		}  
 	}  
 }
