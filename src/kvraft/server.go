@@ -12,7 +12,7 @@ import (
 	"os"
 )
 
-const Debug = true
+const Debug = false
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
 	if Debug {
@@ -76,6 +76,16 @@ type KVServer struct {
 	persister *raft.Persister          // Object to hold this peer's persisted state
 	lastApplied   int
 	snapshotCond *sync.Cond
+}
+
+
+func (kv *KVServer) applySnapshot(snapshot []byte) {
+	r := bytes.NewBuffer(snapshot)
+	d := labgob.NewDecoder(r)
+	if d.Decode(&kv.Store) != nil || d.Decode(&kv.History) != nil || d.Decode(&kv.lastApplied) != nil {
+		DPrintf("readPersist error %v\n", kv.persister.SnapshotSize())
+		os.Exit(1)
+	} 
 }
 
 
@@ -283,12 +293,13 @@ func (kv *KVServer) executeLoop() {
 		select {
 		case msg:=<-kv.applyCh:
 			{
+				kv.mu.Lock()
+
 				if msg.CommandValid {
 					op, ok := msg.Command.(Op)
 					if !ok {
 						continue
 					}
-					kv.mu.Lock()
 		
 					// Assert(kv.History[op.ClientId].Seqno <= op.Seqno, "")
 					entry, ok := kv.History[op.ClientId]
@@ -309,24 +320,24 @@ func (kv *KVServer) executeLoop() {
 						if !ok {
 							entry = Record{}
 						} 
-							
+						
 						entry.Seqno = op.Seqno
 						entry.Key = op.Key
 	
 						switch op.OpType {
 						case GET:
-							DPrintf("[%v]execute %v: entry.cid = %v; entry.Seqno = %v; op.Seqno = %v", kv.me, op.OpType, op.ClientId, entry.Seqno, op.Seqno)
+							DPrintf("[%v]execute [%v]%v: entry.cid = %v; entry.Seqno = %v; op.Seqno = %v", kv.me, msg.CommandIndex, op.OpType, op.ClientId, entry.Seqno, op.Seqno)
 			
 							kv.getCond.Broadcast()
 							break
 						case PUT:
-							DPrintf("[%v]execute %v: entry.cid = %v; entry.Seqno = %v; op.Seqno = %v; key = %v; value = %v", kv.me, op.OpType, op.ClientId, entry.Seqno, op.Seqno, op.Key, op.Value)
+							DPrintf("[%v]execute [%v]%v: entry.cid = %v; entry.Seqno = %v; op.Seqno = %v; key = %v; value = %v", kv.me, msg.CommandIndex, op.OpType, op.ClientId, entry.Seqno, op.Seqno, op.Key, op.Value)
 			
 							kv.Store[op.Key] = op.Value
 							kv.putCond.Broadcast()
 							break
 						case APPEND:
-							DPrintf("[%v]execute %v: entry.cid = %v; entry.Seqno = %v; op.Seqno = %v; key = %v; value = %v", kv.me, op.OpType, op.ClientId, entry.Seqno, op.Seqno, op.Key, op.Value)
+							DPrintf("[%v]execute [%v]%v: entry.cid = %v; entry.Seqno = %v; op.Seqno = %v; key = %v; value = %v", kv.me, msg.CommandIndex, op.OpType, op.ClientId, entry.Seqno, op.Seqno, op.Key, op.Value)
 			
 							kv.Store[op.Key] += op.Value
 							kv.appendCond.Broadcast()
@@ -336,17 +347,24 @@ func (kv *KVServer) executeLoop() {
 						kv.History[op.ClientId] = entry
 					}
 
-					if kv.lastApplied + 1 != msg.CommandIndex {
-						DPrintf("Server[%v]: lastApplied %v, cmdidx %v", kv.me, kv.lastApplied, msg.CommandIndex)
-						Assert(false, "command index error")
+					if kv.lastApplied < msg.CommandIndex {		
+						DPrintf("Server[%v]: update lastApplied to command index %v -> %v", kv.me, kv.lastApplied, msg.CommandIndex)
+
+						kv.lastApplied = msg.CommandIndex
+						if kv.maxraftstate != -1 && kv.persister.RaftStateSize() >= kv.maxraftstate {
+							kv.snapshotCond.Signal()
+						}
 					} 
-					kv.lastApplied = msg.CommandIndex
-					if kv.maxraftstate != -1 && kv.persister.RaftStateSize() >= kv.maxraftstate {
-						kv.snapshotCond.Signal()
+					
+				} else {
+					Assert(msg.SnapshotValid, "invalid snapshot and invalid command")
+					if kv.lastApplied < msg.SnapshotIndex {
+						oldApplied := kv.lastApplied
+						kv.applySnapshot(msg.Snapshot)
+						DPrintf("Server[%v]: update lastApplied to snapshot index %v -> %v", kv.me, oldApplied, kv.lastApplied)
 					}
-		
-					kv.mu.Unlock()
 				}
+				kv.mu.Unlock()
 				break
 			}
 		case <-time.After(Delay * time.Millisecond):
@@ -403,13 +421,7 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 
 	// 读取状态
 	if persister.SnapshotSize() > 0 {
-		snapshot := persister.ReadSnapshot()
-		r := bytes.NewBuffer(snapshot)
-		d := labgob.NewDecoder(r)
-		if d.Decode(&kv.Store) != nil || d.Decode(&kv.History) != nil || d.Decode(&kv.lastApplied) != nil {
-			DPrintf("readPersist error %v\n", persister.SnapshotSize())
-			os.Exit(1)
-		} 
+		kv.applySnapshot(persister.ReadSnapshot())
 	}
 
 	go kv.executeLoop()
