@@ -349,12 +349,12 @@ func (kv *KVServer) executeLoop() {
 
 					if kv.lastApplied < msg.CommandIndex {		
 						DPrintf("Server[%v]: update lastApplied to command index %v -> %v", kv.me, kv.lastApplied, msg.CommandIndex)
-
-						kv.lastApplied = msg.CommandIndex
-						if kv.maxraftstate != -1 && kv.persister.RaftStateSize() >= kv.maxraftstate {
-							kv.snapshotCond.Signal()
-						}
+						kv.lastApplied = msg.CommandIndex	
+						// if kv.maxraftstate != -1 && kv.persister.RaftStateSize() >= kv.maxraftstate {
+						// 	kv.snapshotCond.Signal()
+						// }
 					} 
+					
 					
 				} else {
 					Assert(msg.SnapshotValid, "invalid snapshot and invalid command")
@@ -363,6 +363,10 @@ func (kv *KVServer) executeLoop() {
 						kv.applySnapshot(msg.Snapshot)
 						DPrintf("Server[%v]: update lastApplied to snapshot index %v -> %v", kv.me, oldApplied, kv.lastApplied)
 					}
+				}
+				// 将snapshot的条件检查移出，4B最后一个case耗时60-90s左右
+				if kv.maxraftstate != -1 && kv.persister.RaftStateSize() >= kv.maxraftstate {
+					kv.snapshotCond.Signal()
 				}
 				kv.mu.Unlock()
 				break
