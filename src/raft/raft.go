@@ -171,9 +171,13 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	// Your code here (3D).
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
+
 	DPrintf("%v[%v %v]: snapshot at %v, last snapindex %v\n", rf.me, rf.currentTerm, rf.currentRole, index, rf.lastSnapshotIndex)
 
-	Assert(index <= rf.commitIndex, "snapshot index is greater than commit index\n")
+	if index > rf.commitIndex {
+		DPrintf("%v[%v %v]: snapshot at %v but commit index %v", rf.me, rf.currentTerm, rf.currentRole, index, rf.commitIndex)
+		Assert(index <= rf.commitIndex, "snapshot index is greater than commit index\n")
+	}
 	if index <= rf.lastSnapshotIndex {
 		return
 	}
@@ -186,8 +190,8 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	copy(rf.log[1:], old_log[:])
 	rf.lastSnapshotIndex = index
 
-	// 更新commit & apply 下标
-	rf.commitIndex = index
+	// apply 下标
+	
 	if rf.lastApplied < index {
 		rf.lastApplied = index
 	}
@@ -310,28 +314,37 @@ func (rf *Raft)apply() {
 		i = 0
 		
 		rf.mu.Lock()
-		for !rf.killed() && rf.commitIndex == rf.lastApplied {
+		for !rf.killed() && rf.lastApplied == rf.commitIndex && rf.lastApplied >= rf.lastSnapshotIndex {
 			rf.applyCond.Wait()
 		}
 		if rf.killed() {
 			rf.mu.Unlock()
 			return
 		}
-		DPrintf("%v[%v %v]: apply msg %v->%v", rf.me, rf.currentTerm, rf.currentRole, rf.lastApplied, rf.commitIndex)
-		num = rf.commitIndex - rf.lastApplied
-		for rf.lastApplied < rf.commitIndex {
-			rf.lastApplied++
-			if rf.lastApplied < rf.lastSnapshotIndex {
-				DPrintf("%v[%v %v]: apply %v snapidx %v", rf.me, rf.currentTerm, rf.currentRole, rf.lastApplied, rf.lastSnapshotIndex)
+		if rf.lastApplied < rf.commitIndex && rf.lastApplied >= rf.lastSnapshotIndex {
+			DPrintf("%v[%v %v]: apply msg %v->%v", rf.me, rf.currentTerm, rf.currentRole, rf.lastApplied, rf.commitIndex)
+			num = rf.commitIndex - rf.lastApplied
+			for rf.lastApplied < rf.commitIndex {
+				rf.lastApplied++
+				msg := &ApplyMsg{CommandValid: true, Command: rf.log[rf.lastApplied - rf.lastSnapshotIndex].Command, CommandIndex: rf.lastApplied}
+				if i < size {
+					msgArr[i] = msg
+					i++
+				} else {
+					msgArr = append(msgArr, msg)
+				}
 			}
-			msg := &ApplyMsg{CommandValid: true, Command: rf.log[rf.lastApplied - rf.lastSnapshotIndex].Command, CommandIndex: rf.lastApplied}
-			if i < size {
-				msgArr[i] = msg
-				i++
-			} else {
-				msgArr = append(msgArr, msg)
-			}
+		} else {
+			DPrintf("%v[%v %v]: apply %v snapidx %v", rf.me, rf.currentTerm, rf.currentRole, rf.lastApplied, rf.lastSnapshotIndex)
+
+			msg := &ApplyMsg{SnapshotValid: true, Snapshot: rf.snapshot, SnapshotTerm: rf.lastSnapshotTerm, SnapshotIndex: rf.lastSnapshotIndex}
+			num = 1
+			msgArr[i] = msg
+			i++
+
+			rf.lastApplied = rf.lastSnapshotIndex
 		}
+		
 
 		rf.mu.Unlock()
 
@@ -598,15 +611,9 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotRequest, reply *InstallSnap
 	if rf.commitIndex < args.LastIncludedIndex {
 		rf.commitIndex = args.LastIncludedIndex
 	}
-	rf.lastApplied = args.LastIncludedIndex
 
 	rf.persist()
-
-	// snapshot的msg单独协程提交
-	msg := &ApplyMsg{SnapshotValid: true, Snapshot: rf.snapshot, SnapshotTerm: rf.lastSnapshotTerm, SnapshotIndex: rf.lastSnapshotIndex}
-	go func(msg * ApplyMsg) {
-		rf.applyCh <- *msg
-	}(msg)
+	rf.applyCond.Signal()
 }
 
 
