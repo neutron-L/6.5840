@@ -187,10 +187,10 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	rf.lastSnapshotIndex = index
 
 	// 更新commit & apply 下标
-	if rf.commitIndex < index {
-		rf.commitIndex = index
+	rf.commitIndex = index
+	if rf.lastApplied < index {
+		rf.lastApplied = index
 	}
-	rf.lastApplied = index
 
 	rf.persist()
 }
