@@ -361,7 +361,10 @@ func (kv *KVServer) executeLoop() {
 					if kv.lastApplied < msg.SnapshotIndex {
 						oldApplied := kv.lastApplied
 						kv.applySnapshot(msg.Snapshot)
+						kv.lastApplied = msg.SnapshotIndex
 						DPrintf("Server[%v]: update lastApplied to snapshot index %v -> %v", kv.me, oldApplied, kv.lastApplied)
+					} else {
+						DPrintf("Server[%v]: recv a old snapshot index %v -> %v", kv.me, kv.lastApplied, msg.SnapshotIndex)
 					}
 				}
 				// 将snapshot的条件检查移出，4B最后一个case耗时60-90s左右
