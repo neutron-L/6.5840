@@ -22,6 +22,7 @@ import (
 	"math/rand"
 	"sync"
 	"sync/atomic"
+	"sort"
 	"time"
 	"6.5840/labgob"
 	"6.5840/labrpc"
@@ -362,37 +363,62 @@ func (rf *Raft)apply() {
 	return
 }
 
+
+func (rf *Raft)firstEntryWithTerm(l int, r int, term int) int {
+	for l < r {
+		mid := (l + r) >> 1
+		if rf.log[mid].Term < term {
+			l = mid + 1
+		} else {
+			r = mid
+		}
+	}
+
+	return l
+}
+
+
+
+func (rf *Raft)lastEntryWithTerm(l int, r int, term int) int {
+	for l < r {
+		mid := (l + r) >> 1
+		if rf.log[mid].Term <= term {
+			l = mid + 1
+		} else {
+			r = mid
+		}
+	}
+
+	return l - 1
+}
+
 // 检查哪些entry可以提交，调用时需要已经持有rf的锁
 func (rf *Raft)commitLogEntries() {
-	replicateNum := 0
-	i := rf.commitIndex + 1
-	log_len := rf.logLength()
+	// replicateNum := 0
+	// i := rf.commitIndex + 1
+	// log_len := rf.logLength()
 
-	// for j := 0; j < rf.n; j++ {
-	// 	if rf.matchIndex[j] >= rf.commitIndex {
-	// 		replicateNum++
+	arr := make([]int, rf.n, rf.n)
+	copy(arr, rf.matchIndex)
+	sort.Ints(arr)
+	// for i <= log_len + rf.lastSnapshotIndex {
+	// 	replicateNum = 0
+	// 	for j := 0; j < rf.n; j++ {
+	// 		if rf.matchIndex[j] >= i {
+	// 			replicateNum++
+	// 		}
 	// 	}
-	// }
-	
-	// if replicateNum < (followerNum + 1) / 2 {
-	// 	DPrintf("prev commit index %v\n", rf.commitIndex)
-	// 	Assert(false, "when commit log, prev commitIndex is wrong\n")
-	// }
-
-	for i <= log_len + rf.lastSnapshotIndex {
-		replicateNum = 0
-		for j := 0; j < rf.n; j++ {
-			if rf.matchIndex[j] >= i {
-				replicateNum++
-			}
-		}
 		
-		if replicateNum < (rf.n + 1) / 2 {
-			break
-		}
-		i++
-	}
-	i--
+	// 	if replicateNum < rf.n / 2 + 1 {
+	// 		break
+	// 	}
+	// 	i++
+	// }
+	// i--
+	// DPrintf("cmtidx: %v %v %v", i, arr[rf.n - (rf.n / 2 + 1)], rf.commitIndex)
+	// DPrintf("arr:  %v", arr)
+	// Assert(i == arr[rf.n - (rf.n / 2 + 1)], "compute commit index failed")
+	i := arr[rf.n - (rf.n / 2 + 1)]
 	
 	if i > rf.commitIndex {
 		if rf.log[i - rf.lastSnapshotIndex].Term == rf.currentTerm {
@@ -542,11 +568,13 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			if args.PrevLogIndex > rf.lastSnapshotIndex && args.PrevLogIndex <= rf.lastSnapshotIndex + rf.logLength() {
 				reply.XTerm = rf.log[args.PrevLogIndex - rf.lastSnapshotIndex].Term
 
-				i := args.PrevLogIndex
-				for i > 1 + rf.lastSnapshotIndex && rf.log[i - rf.lastSnapshotIndex].Term == rf.log[i - 1 - rf.lastSnapshotIndex].Term  {
-					i--
-				}
-				reply.XIndex = i
+				// i := args.PrevLogIndex
+				// for i > 1 + rf.lastSnapshotIndex && rf.log[i - rf.lastSnapshotIndex].Term == rf.log[i - 1 - rf.lastSnapshotIndex].Term  {
+				// 	i--
+				// }
+				// reply.XIndex = i
+				reply.XIndex = rf.firstEntryWithTerm(1, args.PrevLogIndex + 1 - rf.lastSnapshotIndex, reply.XTerm)
+				// Assert(, "compute XIndex failed")
 				// DPrintf("%v(%v) snapshot idx %v xlen %v xterm %v xindex %v myterm %v prevterm %v\n", rf.me, rf.currentTerm, rf.lastSnapshotIndex, reply.XLen, reply.XTerm, reply.XIndex, rf.log[args.PrevLogIndex - rf.lastSnapshotIndex].Term, args.PrevLogTerm)
 			} else {
 				reply.XSnapshotIndex = rf.lastSnapshotIndex
@@ -717,26 +745,18 @@ func (rf *Raft) sendAppendEntries(server int, args AppendEntriesArgs) {
 					rf.nextIndex[server] = reply.XLen + 1 
 				} else {
 					// 查找第一个大于xterm的term的下标，二分法
-					log_len := rf.logLength()
-					l := 1
-					r := log_len + 1
+					
 
-					for l < r {
-						mid := (l + r) >> 1
-						if rf.log[mid].Term <= reply.XTerm {
-							l = mid + 1
-						} else {
-							r = mid
-						}
-					}
+					// Assert(, "compute nextIndex failed")
+					idx := rf.lastEntryWithTerm(1, rf.logLength() + 1, reply.XTerm)
 
-					if r == 1 {
+					if idx == 0 {
 						rf.nextIndex[server] = 1 + rf.lastSnapshotIndex
 					} else {
-						if rf.log[r - 1].Term != reply.XTerm {
+						if rf.log[idx].Term != reply.XTerm {
 							rf.nextIndex[server] = reply.XIndex
 						} else {
-							rf.nextIndex[server] = rf.lastSnapshotIndex + r - 1
+							rf.nextIndex[server] = rf.lastSnapshotIndex + idx
 						}
 					} 
 				}
