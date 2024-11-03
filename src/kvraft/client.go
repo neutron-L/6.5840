@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const RetryDelay = 500
+const RetryDelay = 100
 
 
 type Clerk struct {
