@@ -8,10 +8,12 @@ import (
 	"sync/atomic"
     "6.5840/labgob"
 	"log"
+	"time"
 )
 
 
 const Debug = false
+const Delay = 400
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
 	if Debug {
@@ -54,10 +56,13 @@ const (
 
 
 
-type Op struct {
+type Op[T ReqArgs] struct {
 	// Your data here.
 	Operation	OpType
-	Args        interface{}
+	Args        T
+
+	ClientId 		int64
+	Seqno	 		int64
 }
 
 // 返回值为错误码
@@ -118,7 +123,7 @@ func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 
 func (sc *ShardCtrler) Join(args *JoinArgs, reply *JoinReply) {
 	// Your code here.
-	reply.Err, _ = sc.handleReq(Op{Operation: JOIN, Args: args})
+	reply.Err, _ = sc.handleReq(Op{Operation: JOIN, Args: args, ClientId: args.ClientId, Seqno: args.Seqno})
 
 }
 
@@ -136,6 +141,29 @@ func (sc *ShardCtrler) Move(args *MoveArgs, reply *MoveReply) {
 func (sc *ShardCtrler) Query(args *QueryArgs, reply *QueryReply) {
 	// Your code here.
 	reply.Err, reply.Config = sc.handleReq(Op{Operation: QUERY, Args: args})
+}
+
+func (sc *ShardCtrler) executeLoop() {
+	select {
+	case msg := <-sc.applyCh: {
+		sc.mu.Lock()
+		if msg.CommandValid {
+			op := msg.Command.(Op)
+
+
+		}
+		sc.mu.Unlock()
+	}
+	case <-time.After(Delay * time.Millisecond): 
+		DPrintf("[%v]execute: check alive", kv.me)
+
+		if sc.killed() {
+			for _, cond := range sc.condDict {
+				cond.Broadcast()
+			}
+			return
+		}
+	}
 }
 
 
@@ -182,6 +210,8 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister)
 	sc.condDict[LEAVE] = sync.NewCond(&sc.mu)
 	sc.condDict[MOVE]  = sync.NewCond(&sc.mu)
 	sc.condDict[QUERY] = sync.NewCond(&sc.mu)
+
+	go sc.executeLoop()
     
 
 	return sc

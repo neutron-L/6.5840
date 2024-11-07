@@ -30,9 +30,16 @@ type Config struct {
 
 const (
 	OK = "OK"
+	ErrWrongLeader = "ErrWrongLeader"
 )
 
 type Err string
+
+type ReqArgs interface {
+	GetClientId() int64
+	GetSeqno() int64
+}
+
 
 type JoinArgs struct {
 	Servers map[int][]string // new GID -> servers mappings
@@ -82,4 +89,44 @@ type QueryReply struct {
 	WrongLeader bool
 	Err         Err
 	Config      Config
+}
+
+
+func (args *JoinArgs) GetClientId() int 64 {
+	return args.ClientId
+}
+
+
+func (args *JoinArgs) GetSeqno() int 64 {
+	return args.Seqno
+}
+
+
+func (args *LeaveArgs) GetClientId() int 64 {
+	return args.ClientId
+}
+
+
+func (args *LeaveArgs) GetSeqno() int 64 {
+	return args.Seqno
+}
+
+
+func (args *MoveArgs) GetClientId() int 64 {
+	return args.ClientId
+}
+
+
+func (args *MoveArgs) GetSeqno() int 64 {
+	return args.Seqno
+}
+
+
+func (args *QueryArgs) GetClientId() int 64 {
+	return args.ClientId
+}
+
+
+func (args *QueryArgs) GetSeqno() int 64 {
+	return args.Seqno
 }
