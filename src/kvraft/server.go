@@ -68,7 +68,8 @@ type KVServer struct {
 	// Your definitions here.
 	Store		map[string]string
 	History		map[int64]Record   // 对于每个client，处理过的请求的序号
-	getCond		*sync.Cond
+	
+	condDict	map[string]*sync.Cond  // Op type -> cond
 	putCond		*sync.Cond
 	appendCond	*sync.Cond
 
@@ -110,45 +111,48 @@ func (kv *KVServer) snapshotLoop() {
 	}
 }
 
-func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
+func (kv *KVServer) handleReq(op Op) (Err, string) {
 	// Your code here.
+	var err Err = OK
+	value := ""
+
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
 
-	op := Op{OpType: GET, Key: args.Key, ClientId: args.ClientId, Seqno: args.Seqno}
+	// op := Op{OpType: GET, Key: args.Key, ClientId: args.ClientId, Seqno: args.Seqno}
 	// index, term, isLeader := kv.rf.Start(op)
 	_, _, isLeader := kv.rf.Start(op)
 
 	if !isLeader {
-		reply.Err = ErrWrongLeader
-		DPrintf("[%v] Server[%v]->Client[%v]: got %v not leader", args.Seqno, kv.me, args.ClientId, GET)
-		return
+		err = ErrWrongLeader
+		DPrintf("[%v] Server[%v]->Client[%v]: got %v not leader", op.Seqno, kv.me, op.ClientId, op.OpType)
+		return err, value
 	}
 
-	DPrintf("[%v] Server[%v]: got %v from Client[%v], wait commit", args.Seqno, kv.me, GET, args.ClientId)
+	DPrintf("[%v] Server[%v]: got %v from Client[%v], wait commit", op.Seqno, kv.me, op.OpType, op.ClientId)
 
 	// 使用for循环来管理重试逻辑  
 	for !kv.killed() {  
-		kv.getCond.Wait()
+		kv.condDict[op.OpType].Wait()
 
 		// 检查是否alive
 		if kv.killed() {
-			return
+			return err, value
 		}
 
 		//  检查leader资格
 		if _, flag := kv.rf.GetState(); !flag {
-			reply.Err = ErrWrongLeader
-			DPrintf("[%v] Server[%v]->Client[%v]: got %v not leader", args.Seqno, kv.me, args.ClientId, GET)
+			err = ErrWrongLeader
+			DPrintf("[%v] Server[%v]->Client[%v]: got %v not leader", op.Seqno, kv.me, op.ClientId, op.OpType)
 
-			return
+			return err, value
 		}
 
 		// 检查处理历史
-		if entry, ok := kv.History[args.ClientId]; !ok || entry.Seqno < args.Seqno {
+		if entry, ok := kv.History[op.ClientId]; !ok || entry.Seqno < op.Seqno {
 			if ok {
 				DPrintf("[%v] Server[%v]: wait %v entry.Seqno = %v; args.Seqno = %v", 
-					args.Seqno, kv.me, GET, entry.Seqno, args.Seqno)
+					op.Seqno, kv.me, op.OpType, entry.Seqno, op.Seqno)
 			}
 			
 			continue
@@ -156,116 +160,34 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 		// Assert(kv.History[args.ClientId].OpType == Get, "history optype error") 
 		// Assert(kv.History[args.ClientId].Seqno == args.Seqno, "history seqno error") 
 		// Assert(kv.History[args.ClientId].Key == args.Key, "history key error") 
-		reply.Err = OK
-		reply.Value = kv.History[args.ClientId].Value
-		DPrintf("[%v] Server[%v]->Client[%v]: %v reply", args.Seqno, kv.me, args.ClientId, GET)
+		err = OK
+		if op.OpType == GET {
+			value = kv.History[op.ClientId].Value
+		}
+		DPrintf("[%v] Server[%v]->Client[%v]: %v reply", op.Seqno, kv.me, op.ClientId, op.OpType)
 
-		return
+		return err, value
 	}  
+	return err, value
+}
+
+func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
+	// Your code here.
+	op := Op{OpType: GET, Key: args.Key, ClientId: args.ClientId, Seqno: args.Seqno}
+
+	reply.Err, reply.Value = kv.handleReq(op)  
 }
 
 func (kv *KVServer) Put(args *PutAppendArgs, reply *PutAppendReply) {
 	// Your code here.
-	kv.mu.Lock()
-	defer kv.mu.Unlock()
-
 	op := Op{OpType: PUT, Key: args.Key, Value: args.Value, ClientId: args.ClientId, Seqno: args.Seqno}
-	// index, term, isLeader := kv.rf.Start(op)
-	_, _, isLeader := kv.rf.Start(op)
-
-	if !isLeader {
-		reply.Err = ErrWrongLeader
-		DPrintf("[%v] Server[%v]->Client[%v]: got %v not leader", args.Seqno, kv.me, args.ClientId, PUT)
-
-		return
-	}
-	DPrintf("[%v] Server[%v]: got %v from Client[%v], wait commit", args.Seqno, kv.me, PUT, args.ClientId)
-
-	// 使用for循环等待当前command的执行  
-	for !kv.killed() {  
-		kv.putCond.Wait()
-		// 检查是否alive
-		if kv.killed() {
-			return
-		}
-
-		// 检查leader资格
-		if _, flag := kv.rf.GetState(); !flag {
-			reply.Err = ErrWrongLeader
-			DPrintf("[%v] Server[%v]->Client[%v]: got %v not leader", args.Seqno, kv.me, args.ClientId, PUT)
-
-			return
-		}
-		// 检查处理历史
-		if entry, ok := kv.History[args.ClientId]; !ok || entry.Seqno < args.Seqno {
-			if ok {
-				DPrintf("[%v] Server[%v]: wait %v entry.Seqno = %v; args.Seqno = %v", 
-				args.Seqno, kv.me, PUT, entry.Seqno, args.Seqno)
-			}
-			
-			continue
-		}
-		// Assert(kv.History[args.ClientId].OpType == Put, "history optype error") 
-		// Assert(kv.History[args.ClientId].Seqno == args.Seqno, "history seqno error") 
-		// Assert(kv.History[args.ClientId].Key == args.Key, "history key error") 
-		reply.Err = OK
-		// reply.Value = kv.History[args.ClientId].Value
-		DPrintf("[%v] Server[%v]->Client[%v]: %v reply", args.Seqno, kv.me, args.ClientId, PUT)
-
-		return
-	}  
+	reply.Err, _ = kv.handleReq(op)  
 }
 
 func (kv *KVServer) Append(args *PutAppendArgs, reply *PutAppendReply) {
 	// Your code here.
-	kv.mu.Lock()
-	defer kv.mu.Unlock()
-
 	op := Op{OpType: APPEND, Key: args.Key, Value: args.Value, ClientId: args.ClientId, Seqno: args.Seqno}
-	// index, term, isLeader := kv.rf.Start(op)
-	_, _, isLeader := kv.rf.Start(op)
-
-	if !isLeader {
-		reply.Err = ErrWrongLeader
-		DPrintf("[%v] Server[%v]->Client[%v]: got %v not leader", args.Seqno, kv.me, args.ClientId, APPEND)
-
-		return
-	}
-	DPrintf("[%v] Server[%v]: got %v from Client[%v], wait commit", args.Seqno, kv.me, APPEND, args.ClientId)
-
-	// 使用for循环等待当前command的执行  
-	for !kv.killed () {  
-		kv.appendCond.Wait()
-
-		// 检查是否alive
-		if kv.killed() {
-			return
-		}
-		// 检查leader资格
-		if _, flag := kv.rf.GetState(); !flag {
-			reply.Err = ErrWrongLeader
-			DPrintf("[%v] Server[%v]->Client[%v]: got %v not leader", args.Seqno, kv.me, args.ClientId, APPEND)
-
-			return
-		}
-		// 检查处理历史
-		if entry, ok := kv.History[args.ClientId]; !ok || entry.Seqno < args.Seqno {
-			if ok {
-				DPrintf("[%v] Server[%v]: wait %v entry.Seqno = %v; args.Seqno = %v", 
-				args.Seqno, kv.me, APPEND, entry.Seqno, args.Seqno)
-			}
-			
-			continue
-		}
-		// Assert(kv.History[args.ClientId].OpType == Put, "history optype error") 
-		// Assert(kv.History[args.ClientId].Seqno == args.Seqno, "history seqno error") 
-		// Assert(kv.History[args.ClientId].Key == args.Key, "history key error") 
-		reply.Err = OK
-		// reply.Value = kv.History[args.ClientId].Value
-		DPrintf("[%v] Server[%v]->Client[%v]: %v reply", args.Seqno, kv.me, args.ClientId, APPEND)
-
-		return
-	}  
+	reply.Err, _ = kv.handleReq(op)  
 }
 
 // the tester calls Kill() when a KVServer instance won't
@@ -305,17 +227,6 @@ func (kv *KVServer) executeLoop() {
 					entry, ok := kv.History[op.ClientId]
 					if ok && entry.Seqno >= op.Seqno {
 						DPrintf("[%v]executed: entry.cid = %v; entry.Seqno = %v; op.Seqno = %v", kv.me, op.ClientId, entry.Seqno, op.Seqno)
-						switch op.OpType {
-						case GET:
-							kv.getCond.Broadcast()
-							break
-						case PUT:
-							kv.putCond.Broadcast()
-							break
-						case APPEND:
-							kv.appendCond.Broadcast()
-							break
-						}
 					} else {
 						if !ok {
 							entry = Record{}
@@ -324,28 +235,18 @@ func (kv *KVServer) executeLoop() {
 						entry.Seqno = op.Seqno
 						entry.Key = op.Key
 	
-						switch op.OpType {
-						case GET:
-							DPrintf("[%v]execute [%v]%v: entry.cid = %v; entry.Seqno = %v; op.Seqno = %v", kv.me, msg.CommandIndex, op.OpType, op.ClientId, entry.Seqno, op.Seqno)
-			
-							kv.getCond.Broadcast()
-							break
-						case PUT:
-							DPrintf("[%v]execute [%v]%v: entry.cid = %v; entry.Seqno = %v; op.Seqno = %v; key = %v; value = %v", kv.me, msg.CommandIndex, op.OpType, op.ClientId, entry.Seqno, op.Seqno, op.Key, op.Value)
-			
+						DPrintf("[%v]execute [%v]%v: entry.cid = %v; entry.Seqno = %v; op.Seqno = %v", kv.me, msg.CommandIndex, op.OpType, op.ClientId, entry.Seqno, op.Seqno)
+
+						if op.OpType == PUT {
 							kv.Store[op.Key] = op.Value
-							kv.putCond.Broadcast()
-							break
-						case APPEND:
-							DPrintf("[%v]execute [%v]%v: entry.cid = %v; entry.Seqno = %v; op.Seqno = %v; key = %v; value = %v", kv.me, msg.CommandIndex, op.OpType, op.ClientId, entry.Seqno, op.Seqno, op.Key, op.Value)
-			
+						} else if op.OpType == APPEND {
 							kv.Store[op.Key] += op.Value
-							kv.appendCond.Broadcast()
-							break
 						}
+
 						entry.Value = kv.Store[op.Key]
 						kv.History[op.ClientId] = entry
 					}
+					kv.condDict[op.OpType].Broadcast()
 
 					if kv.lastApplied < msg.CommandIndex {		
 						DPrintf("Server[%v]: update lastApplied to command index %v -> %v", kv.me, kv.lastApplied, msg.CommandIndex)
@@ -378,10 +279,9 @@ func (kv *KVServer) executeLoop() {
 			DPrintf("[%v]execute: check alive", kv.me)
 			
 			if kv.killed() {
-				kv.getCond.Broadcast()
-				kv.putCond.Broadcast()
-				kv.appendCond.Broadcast()
-
+				for _, cond := range kv.condDict {
+					cond.Broadcast()
+				}
 				return
 			}
 		}
@@ -418,9 +318,10 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.Store = make(map[string]string)
 	kv.History = make(map[int64]Record)
 
-	kv.getCond = sync.NewCond(&kv.mu)
-	kv.putCond = sync.NewCond(&kv.mu)
-	kv.appendCond = sync.NewCond(&kv.mu)
+	kv.condDict = make(map[string]*sync.Cond)
+	kv.condDict[GET] = sync.NewCond(&kv.mu)
+	kv.condDict[PUT] = sync.NewCond(&kv.mu)
+	kv.condDict[APPEND] = sync.NewCond(&kv.mu)
 
 	kv.lastApplied = 0
 	kv.persister = persister
