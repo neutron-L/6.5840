@@ -31,6 +31,7 @@ type Config struct {
 const (
 	OK = "OK"
 	ErrWrongLeader = "ErrWrongLeader"
+	ErrNoExist     = "ErrNoExist"
 )
 
 type Err string
@@ -92,41 +93,41 @@ type QueryReply struct {
 }
 
 
-func (args *JoinArgs) GetClientId() int 64 {
+func (args *JoinArgs) GetClientId() int64 {
 	return args.ClientId
 }
 
 
-func (args *JoinArgs) GetSeqno() int 64 {
+func (args *JoinArgs) GetSeqno() int64 {
 	return args.Seqno
 }
 
 
-func (args *LeaveArgs) GetClientId() int 64 {
+func (args *LeaveArgs) GetClientId() int64 {
 	return args.ClientId
 }
 
 
-func (args *LeaveArgs) GetSeqno() int 64 {
+func (args *LeaveArgs) GetSeqno() int64 {
 	return args.Seqno
 }
 
 
-func (args *MoveArgs) GetClientId() int 64 {
+func (args *MoveArgs) GetClientId() int64 {
 	return args.ClientId
 }
 
 
-func (args *MoveArgs) GetSeqno() int 64 {
+func (args *MoveArgs) GetSeqno() int64 {
 	return args.Seqno
 }
 
 
-func (args *QueryArgs) GetClientId() int 64 {
+func (args *QueryArgs) GetClientId() int64 {
 	return args.ClientId
 }
 
 
-func (args *QueryArgs) GetSeqno() int 64 {
+func (args *QueryArgs) GetSeqno() int64 {
 	return args.Seqno
 }
