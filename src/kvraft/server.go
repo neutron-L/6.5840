@@ -220,6 +220,7 @@ func (kv *KVServer) executeLoop() {
 				if msg.CommandValid {
 					op, ok := msg.Command.(Op)
 					if !ok {
+						kv.mu.Unlock()
 						continue
 					}
 		
