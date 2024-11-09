@@ -24,7 +24,8 @@ func DPrintf(format string, a ...interface{}) (n int, err error) {
 
 type Record struct {
 	Seqno int64
-	Data Config
+	Err	 Err
+	Config Config
 }
 
 type OpType string
@@ -39,9 +40,11 @@ type ShardCtrler struct {
 	dead	int32
 
 	// Your data here.
-	History	map[int64]Record             // 每个client的已处理序号
-	condDict map[OpType]*sync.Cond
-	configs []Config // indexed by config num
+	lastApplied  	int
+	History			map[int64]Record             // 每个client的已处理序号
+	condDict		map[OpType]*sync.Cond
+	configs 		[]Config // indexed by config num
+	nextCfgIdx		int
 }
 
 
@@ -56,10 +59,10 @@ const (
 
 
 
-type Op[T ReqArgs] struct {
+type Op struct {
 	// Your data here.
 	Operation	OpType
-	Args        T
+	Args        ReqArgs
 
 	ClientId 		int64
 	Seqno	 		int64
@@ -79,18 +82,8 @@ func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 	var cid int64
 	var seqno int64
 
-	var args interface{} = op.Args
-	switch args.(type) {
-	
-	case *JoinArgs:
-		cid, seqno = args.(*JoinArgs).ClientId, args.(*JoinArgs).Seqno
-	case *LeaveArgs:
-		cid, seqno = args.(*LeaveArgs).ClientId, args.(*LeaveArgs).Seqno
-	case *MoveArgs:
-		cid, seqno = args.(*MoveArgs).ClientId, args.(*MoveArgs).Seqno
-	case *QueryArgs:
-		cid, seqno = args.(*QueryArgs).ClientId, args.(*QueryArgs).Seqno
-	}
+	var args = op.Args
+	cid, seqno = args.GetClientId(), args.GetSeqno()
 
 	for !sc.killed() {
 		// 条件变量等待被唤醒
@@ -113,13 +106,33 @@ func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 			continue
 		} else {
 			DPrintf("[%v] Server[%v]->Client[%v]: %v reply", seqno, sc.me, cid, op.Operation)
-			return OK, record.Data
+			return OK, record.Config
 		}
 	}
 
 	return ErrWrongLeader, Config{}
 }
 
+func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
+
+}
+
+
+func (sc *ShardCtrler) doLeave(GIDs []int) Err {
+	
+}
+
+func (sc *ShardCtrler) doMove(shard int, GID int) Err {
+	
+}
+
+
+func (sc *ShardCtrler) doQuery(num int) (Err, Config) {
+	if num < 0 || num >= sc.nextCfgIdx {
+		return ErrNoExist, Config{}
+	}
+	return OK, sc.configs[num]
+}
 
 func (sc *ShardCtrler) Join(args *JoinArgs, reply *JoinReply) {
 	// Your code here.
@@ -144,26 +157,64 @@ func (sc *ShardCtrler) Query(args *QueryArgs, reply *QueryReply) {
 }
 
 func (sc *ShardCtrler) executeLoop() {
-	select {
-	case msg := <-sc.applyCh: {
-		sc.mu.Lock()
-		if msg.CommandValid {
-			op := msg.Command.(Op)
-
-
-		}
-		sc.mu.Unlock()
-	}
-	case <-time.After(Delay * time.Millisecond): 
-		DPrintf("[%v]execute: check alive", kv.me)
-
-		if sc.killed() {
-			for _, cond := range sc.condDict {
-				cond.Broadcast()
+	var args ReqArgs
+	var cid   int64
+	var seqno int64
+	for !sc.killed() {
+		select {
+			case msg := <-sc.applyCh: {
+				sc.mu.Lock()
+				if msg.CommandValid {
+					op, ok := msg.Command.(Op)
+					if !ok {
+						sc.mu.Unlock()
+						continue
+					}
+					args = op.Args
+					cid, seqno = args.GetClientId(), args.GetSeqno()
+		
+					if record, ok := sc.History[cid]; ok && seqno <= record.Seqno {
+						DPrintf("[%v]executed: record.cid = %v; record.Seqno = %v; op.Seqno = %v", sc.me, cid, record.Seqno, seqno)
+					} else {
+						if !ok {
+							record = Record{Seqno: seqno}
+						}
+						switch op.Operation {
+						case JOIN: {
+							record.Err = sc.doJoin(args.(*JoinArgs).Servers)
+						}
+						case LEAVE: {
+							record.Err = sc.doLeave(args.(*LeaveArgs).GIDs)
+						}
+						case MOVE: {
+							record.Err = sc.doMove(args.(*MoveArgs).Shard, args.(*MoveArgs).GID)
+						}
+						case QUERY: {
+							record.Err, record.Config = sc.doQuery(args.(*QueryArgs).Num)
+						}
+						}
+		
+						sc.History[cid] = record
+					}
+		
+					sc.condDict[op.Operation].Broadcast()
+				} else if msg.SnapshotValid {
+		
+				}
+				sc.mu.Unlock()
 			}
-			return
+			case <-time.After(Delay * time.Millisecond): 
+				DPrintf("[%v]execute: check alive", sc.me)
+		
+				if sc.killed() {
+					for _, cond := range sc.condDict {
+						cond.Broadcast()
+					}
+					return
+				}
 		}
 	}
+	
 }
 
 
@@ -198,6 +249,8 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister)
 	sc.me = me
 
 	sc.configs = make([]Config, 1)
+	sc.nextCfgIdx = 1
+
 	sc.configs[0].Groups = map[int][]string{}
 
 	labgob.Register(Op{})
@@ -205,6 +258,8 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister)
 	sc.rf = raft.Make(servers, me, persister, sc.applyCh)
 
 	// Your code here.
+	sc.History	= make(map[int64]Record)
+
 	sc.condDict = make(map[OpType]*sync.Cond)
 	sc.condDict[JOIN]  = sync.NewCond(&sc.mu)
 	sc.condDict[LEAVE] = sync.NewCond(&sc.mu)
