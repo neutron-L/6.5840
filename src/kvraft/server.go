@@ -24,7 +24,7 @@ func DPrintf(format string, a ...interface{}) (n int, err error) {
 
 // 自定义的assert，可用性欠佳
 func Assert(condition bool, msg string) {
-	if Debug && !condition {
+	if !condition {
 		log.Fatalf("Assertion failed: %s", msg)
 	}
 }
@@ -255,7 +255,9 @@ func (kv *KVServer) executeLoop() {
 						// if kv.maxraftstate != -1 && kv.persister.RaftStateSize() >= kv.maxraftstate {
 						// 	kv.snapshotCond.Signal()
 						// }
-					} 
+					} else {
+						Assert(false, "Recv a old command")
+					}
 					
 					
 				} else {

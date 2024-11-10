@@ -1,0 +1,3409 @@
+Test: one client (4A) ...
+  ... Passed --  16.5  5 11463 2144
+Test: ops complete fast enough (4A) ...
+  ... Passed --   4.3  3  3096    0
+Test: many clients (4A) ...
+  ... Passed --  16.1  5 15618 2981
+Test: unreliable net, many clients (4A) ...
+  ... Passed --  50.1  5  3555  183
+Test: concurrent append to same key, unreliable (4A) ...
+  ... Passed --   6.8  3   339   52
+Test: progress in majority (4A) ...
+  ... Passed --   1.5  5   117    2
+Test: no progress in minority (4A) ...
+  ... Passed --   1.0  5   117    3
+Test: completion after heal (4A) ...
+  ... Passed --   2.0  5   110    3
+Test: partitions, one client (4A) ...
+  ... Passed --  23.7  5 11662 2081
+Test: partitions, many clients (4A) ...
+  ... Passed --  25.2  5 17114 3091
+Test: restarts, one client (4A) ...
+labgob warning: Decoding into a non-default variable/field int may not work
+  ... Passed --  26.6  5 15722 2949
+Test: restarts, many clients (4A) ...
+  ... Passed --  24.6  5 17079 3218
+Test: unreliable net, restarts, many clients (4A) ...
+  ... Passed --  32.2  5  2201  136
+Test: restarts, partitions, many clients (4A) ...
+  ... Passed --  34.2  5 12020 2071
+Test: unreliable net, restarts, partitions, many clients (4A) ...
+  ... Passed --  51.9  5  3337  139
+Test: unreliable net, restarts, partitions, random keys, many clients (4A) ...
+  ... Passed --  98.6  7  9525  264
+Test: InstallSnapshot RPC (4B) ...
+  ... Passed --   7.5  3   456   63
+Test: snapshot size is reasonable (4B) ...
+  ... Passed --   2.7  3  2444  800
+Test: ops complete fast enough (4B) ...
+  ... Passed --   2.0  3  3040    0
+Test: restarts, snapshots, one client (4B) ...
+  ... Passed --  28.8  5 74478 14674
+Test: restarts, snapshots, many clients (4B) ...
+  ... Passed --  26.8  5 90006 17704
+Test: unreliable net, snapshots, many clients (4B) ...
+  ... Passed --  24.6  5  1962  123
+Test: unreliable net, restarts, snapshots, many clients (4B) ...
+  ... Passed --  47.7  5  3058  160
+Test: unreliable net, restarts, partitions, snapshots, many clients (4B) ...
+panic: test timed out after 10m0s
+running tests:
+	TestSnapshotUnreliableRecoverConcurrentPartition4B (41s)
+
+goroutine 902973 [running]:
+testing.(*M).startAlarm.func1()
+	/usr/local/go/src/testing/testing.go:2241 +0x3c5
+created by time.goFunc
+	/usr/local/go/src/time/sleep.go:176 +0x32
+
+goroutine 1 [chan receive, 1 minutes]:
+testing.(*T).Run(0xc0000969c0, {0x652e3c?, 0x50ea25?}, 0x65d7c0)
+	/usr/local/go/src/testing/testing.go:1630 +0x405
+testing.runTests.func1(0x7e3b60?)
+	/usr/local/go/src/testing/testing.go:2036 +0x45
+testing.tRunner(0xc0000969c0, 0xc0000d1c88)
+	/usr/local/go/src/testing/testing.go:1576 +0x10b
+testing.runTests(0xc0000ac0a0?, {0x7df120, 0x17, 0x17}, {0x0?, 0x100c0000a7788?, 0x7e32c0?})
+	/usr/local/go/src/testing/testing.go:2034 +0x489
+testing.(*M).Run(0xc0000ac0a0)
+	/usr/local/go/src/testing/testing.go:1906 +0x63a
+main.main()
+	_testmain.go:91 +0x1aa
+
+goroutine 894942 [sleep]:
+time.Sleep(0x3b9aca00)
+	/usr/local/go/src/runtime/time.go:195 +0x135
+6.5840/kvraft.GenericTest(0xc003354340, {0x6450dd, 0x2}, 0x5, 0x5, 0x1, 0x1, 0x1, 0x3e8, 0x0)
+	/home/rda/6.5840/src/kvraft/test_test.go:318 +0x7cf
+6.5840/kvraft.TestSnapshotUnreliableRecoverConcurrentPartition4B(0x5?)
+	/home/rda/6.5840/src/kvraft/test_test.go:714 +0x45
+testing.tRunner(0xc003354340, 0x65d7c0)
+	/usr/local/go/src/testing/testing.go:1576 +0x10b
+created by testing.(*T).Run
+	/usr/local/go/src/testing/testing.go:1629 +0x3ea
+
+goroutine 610090 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0030b5710, 0x100)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c4d80?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0048be150)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 260778 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc001f88590, 0x1fe)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005ce000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005ce000)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 21 [sync.Cond.Wait, 9 minutes]:
+sync.runtime_notifyListWait(0xc000099a90, 0x794)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c4240?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c4240)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 377417 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc003b28a90, 0x38)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003742fc0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003ae4850)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 24 [sync.Cond.Wait, 9 minutes]:
+sync.runtime_notifyListWait(0xc000099fd0, 0x76c)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c4360?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c4360)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 291336 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc003f70710, 0x38)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0037ec7e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0037ec7e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 27 [sync.Cond.Wait, 9 minutes]:
+sync.runtime_notifyListWait(0xc000102290, 0x791)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c4480?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c4480)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 138389 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc00012ec90, 0x78b)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c4000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c4000)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 30 [sync.Cond.Wait, 9 minutes]:
+sync.runtime_notifyListWait(0xc000102550, 0x860)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c45a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c45a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 287773 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc000fd4a10, 0x8)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003d17000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147e900)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 475906 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0018b5310, 0xdd)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0033dcfc0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003fd7730)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 33 [sync.Cond.Wait, 9 minutes]:
+sync.runtime_notifyListWait(0xc000102810, 0x6e6)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c46c0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c46c0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 291361 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc001b58c90, 0x37)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0037ecea0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0037ecea0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 363102 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc00168cbd0, 0x1d)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000344000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384e120)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 34450 [sync.Cond.Wait, 9 minutes]:
+sync.runtime_notifyListWait(0xc000614450, 0x3ea)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005ce360?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005ce360)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 386559 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0011d70d0, 0x148)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002a0ec60?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc002889490)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 34453 [sync.Cond.Wait, 9 minutes]:
+sync.runtime_notifyListWait(0xc0006149d0, 0x260)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005ce480?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005ce480)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 236656 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc0010273d0, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001cb7000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d30e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 330940 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc00401ba10, 0x24)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0001afe70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0037ede60)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 894963 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0009590d0, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0037edb00?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00334f810)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 370065 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc002f9c190, 0x23)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005cf200?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc004469260)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 227840 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc00116ae50, 0x1f6)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007d2900?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d2900)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 103382 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc000293f90, 0x816)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e88c60?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e88c60)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 892434 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0004424d0, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc005790a20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc000a58d90)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 536595 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001c93d10, 0x12ad)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0037427e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0037427e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 901533 [select]:
+6.5840/kvraft.(*Clerk).PutAppend(0xc000df5ec0, {0x64f01c, 0x1}, {0xc01907b340?, 0x4?}, {0x64571b, 0x6})
+	/home/rda/6.5840/src/kvraft/client.go:142 +0x373
+6.5840/kvraft.(*Clerk).Append(...)
+	/home/rda/6.5840/src/kvraft/client.go:168
+6.5840/kvraft.Append(0xc0043d69c0, 0x2?, {0x64f01c, 0x1}, {0xc01907b340, 0x7}, 0xc003325ca0, 0x1)
+	/home/rda/6.5840/src/kvraft/test_test.go:83 +0xc5
+6.5840/kvraft.GenericTest.func1(0x1, 0xc0023870b0?, 0xc003354340)
+	/home/rda/6.5840/src/kvraft/test_test.go:278 +0x56f
+6.5840/kvraft.run_client(0x1?, 0xc0043d69c0, 0x78?, 0xc005791d40?, 0xc003eb5860)
+	/home/rda/6.5840/src/kvraft/test_test.go:109 +0xe4
+created by 6.5840/kvraft.spawn_clients_and_wait
+	/home/rda/6.5840/src/kvraft/test_test.go:119 +0x4c
+
+goroutine 189785 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc00057e490, 0x54a)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00147f560?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147f560)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 325005 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc0013249d0, 0x7f)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007d2360?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d2360)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 330468 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc002803490, 0x6)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00221d0e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00221d0e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 887603 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0026ea8d0, 0x3)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00085cd20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00085cd20)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 386549 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0011d6850, 0x114a)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002a0ea20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002a0ea20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 294793 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc000e83d50, 0x3ff)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007d3b00?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d3b00)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 370059 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001d91cd0, 0x320)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005cf0e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005cf0e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 90657 [sync.Cond.Wait, 8 minutes]:
+sync.runtime_notifyListWait(0xc00056ea50, 0xb3)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0x41e220?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147e120)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 227881 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc000aca510, 0x1eb)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007d2fc0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d2fc0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 34399 [sync.Cond.Wait, 9 minutes]:
+sync.runtime_notifyListWait(0xc000614090, 0x33e)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005ce240?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005ce240)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 330962 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc002d0e750, 0x14)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000044670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147e6c0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 897121 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc005ea4210, 0x21)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0x40d6ad?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e899e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 336411 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc002c12590, 0x2d)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0041465a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147ea20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 894943 [select]:
+6.5840/labrpc.MakeNetwork.func1()
+	/home/rda/6.5840/src/labrpc/labrpc.go:153 +0xb8
+created by 6.5840/labrpc.MakeNetwork
+	/home/rda/6.5840/src/labrpc/labrpc.go:151 +0x17c
+
+goroutine 340794 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc00092c2d0, 0x29)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0040a1320?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0040a1320)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 344611 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc000add2d0, 0x42)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003d70000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00368c000)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 354964 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc0035c50d0, 0x32)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003834800?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384e6c0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 336417 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc002acbed0, 0x26)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00147f7a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147f7a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 344614 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc0003ebfd0, 0x37)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00368c240?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00368c240)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 276644 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc000a09dd0, 0x148)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e89440?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e89440)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 892414 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc00070fc10, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0057905a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc000a43dc0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 475904 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0018b4210, 0xf8b)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0033dcfc0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0033dcfc0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 340788 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc002451a10, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0041463c0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0040a0ea0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 354946 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc0029ba450, 0x37)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0022ff000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0037ed320)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 370061 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001d91ed0, 0x27)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005cf0e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0044691f0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 900554 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc003763790, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc005791440?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00118e150)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 288328 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc0019f77d0, 0x10)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0011de640?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00221cb40)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 90654 [sync.Cond.Wait, 8 minutes]:
+sync.runtime_notifyListWait(0xc00056e690, 0xb6)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00147e000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147e000)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 318658 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc0024be750, 0xb9)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00384e7e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384e7e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 289368 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc000f5e810, 0x2c)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0001b3e70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc001593b00)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 100986 [sync.Cond.Wait, 8 minutes]:
+sync.runtime_notifyListWait(0xc000d0c610, 0x35)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0001b0e70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c57a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 377413 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc003b28750, 0x34)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003742ea0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003ae47e0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 900552 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc003762b50, 0x1e)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0x4537c6?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc005791440)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 103385 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc0006683d0, 0x331)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e88ea0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e88ea0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 332716 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc000bc2f90, 0x2a)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00148b6c8?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc003e68000)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 330459 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc002fc2010, 0x7)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00258b000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00221c240)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 368660 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc003327f10, 0x3d)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003108670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002a0f9e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 536541 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc00487abd0, 0xf5)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003742000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003b70000)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 890251 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000cce450, 0x33)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001489670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002a0e360)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 260803 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc000783f10, 0x27c)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005cec60?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005cec60)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 330968 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc00110e550, 0x14)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001219670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147ec60)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 101996 [sync.Cond.Wait, 8 minutes]:
+sync.runtime_notifyListWait(0xc000292310, 0x4)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00015ce70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005cf9e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 339674 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc001de5d90, 0x7)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0022ff400?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc003182a20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 287767 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc001e66710, 0x9)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00147e240?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147e240)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 287776 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc00207c390, 0x9)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00147eb40?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147eb40)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 887591 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0019b2d90, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0057919e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00055dea0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 890253 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc001d7b110, 0x3)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002a0e360?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0034af570)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 293858 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc001063ed0, 0x8)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002320000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384e000)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 294799 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc0011283d0, 0x342)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002320000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00221c000)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 339668 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc0026bc910, 0x7)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002321800?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0031825a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 336414 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc001327510, 0x35)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003eb23c0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147f200)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 892416 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000088c50, 0xb)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0x4537c6?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc005790a20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 339665 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc0014441d0, 0x7)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002321400?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc003182360)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 610092 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0030b5a90, 0x43a)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c50e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c50e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 43745 [sync.Cond.Wait, 9 minutes]:
+sync.runtime_notifyListWait(0xc000574210, 0x65e)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007d26c0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d26c0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 475892 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001e435d0, 0xb85)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0033dc5a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0033dc5a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 330465 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc0001cdad0, 0x7)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00201e000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00221cea0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 212913 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc000c97ed0, 0x370)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e88240?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e88240)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 276622 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc0004330d0, 0x164)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e88fc0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e88fc0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 377411 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc003b28610, 0x252)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003742ea0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc003742ea0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 336423 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc002bddb10, 0x32)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00147fc20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147fc20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 354955 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc0011fa3d0, 0x5a)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003834c00?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0037ed9e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 880275 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc001e6cad0, 0x7c)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0x40d6fe?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00917f8c0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 610080 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0030b4810, 0x492)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c4b40?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c4b40)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 103360 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc0005ef710, 0x62a)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007c4000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e88a20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 610076 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0030b4190, 0x495)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c4900?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c4900)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 475896 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0016ce790, 0xc3c)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0033dc900?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0033dc900)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 344599 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc002a04410, 0x27)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0037b6000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002b49560)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 288322 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc002e01f10, 0xe)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00003e670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00221c7e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 101993 [sync.Cond.Wait, 8 minutes]:
+sync.runtime_notifyListWait(0xc00056fd10, 0x8)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001487670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005cf7a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 237027 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc000ed1590, 0x300)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005ce5a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005ce5a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 287770 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc001bda710, 0xa)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000f4f000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147e5a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 325002 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc0023917d0, 0x79)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007d2000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d2000)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 293861 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc001722890, 0xb)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002402000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384e240)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 717135 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc00261e950, 0x406)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0040a0000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0040a0000)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 138386 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc00012e310, 0x79a)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007d3e60?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d3e60)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 212916 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc00031c6d0, 0x3a0)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e886c0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e886c0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 227878 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc00054e890, 0x206)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007d2d80?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d2d80)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 536605 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc000603750, 0xed)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003743560?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003fd60e0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 354958 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc000c47e50, 0x39)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003834400?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0037edc20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 43659 [sync.Cond.Wait, 9 minutes]:
+sync.runtime_notifyListWait(0xc000420ed0, 0x7e0)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007d2240?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d2240)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 43662 [sync.Cond.Wait, 9 minutes]:
+sync.runtime_notifyListWait(0xc000421950, 0x618)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007d25a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d25a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 227875 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc000ef5c90, 0x1f7)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007d2b40?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d2b40)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 100989 [sync.Cond.Wait, 8 minutes]:
+sync.runtime_notifyListWait(0xc000d0ca90, 0x30)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000517e70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c58c0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 294787 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc001bc1f50, 0x29c)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007d38c0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d38c0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 370055 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001d916d0, 0x1b9)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005ced80?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005ced80)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 189744 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc000ef3290, 0x4f7)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00147f0e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147f0e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 101968 [sync.Cond.Wait, 8 minutes]:
+sync.runtime_notifyListWait(0xc00056f150, 0x7)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xf?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005cf440)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 610088 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0030b5510, 0x47b)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c4d80?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c4d80)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 103357 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc0005ef2d0, 0x3cd)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e88900?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e88900)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 138392 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc00012f1d0, 0x4a8)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c4a20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c4a20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 101987 [sync.Cond.Wait, 8 minutes]:
+sync.runtime_notifyListWait(0xc00056f490, 0x4)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001488e70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005cf560)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 363124 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc00105f850, 0x1e)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001b57000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384ed80)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 289365 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc002ac4390, 0x2c)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00051d670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0015938c0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 90651 [sync.Cond.Wait, 8 minutes]:
+sync.runtime_notifyListWait(0xc00056e310, 0xaf)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e89e60?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e89e60)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 236697 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc000dbca50, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000f4f000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d37a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 887597 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc004d618d0, 0x28)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000045e70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00221c360)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 276641 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc0007b0a10, 0x194)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e89200?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e89200)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 340806 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc003688b50, 0x34)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0040a19e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0040a19e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 900564 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc002646c10, 0x10)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003f90e70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc003e686c0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 890245 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc001e5afd0, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c5680?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0034a15e0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 289327 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc000a1afd0, 0x2b)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001593440?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc001593440)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 324999 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc002049610, 0x6d)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c5d40?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c5d40)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 900555 [sleep]:
+time.Sleep(0x4f27ac0)
+	/usr/local/go/src/runtime/time.go:195 +0x135
+6.5840/raft.(*Raft).ticker(0xc005791d40)
+	/home/rda/6.5840/src/raft/raft.go:969 +0x6b
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1020 +0x30e
+
+goroutine 100992 [sync.Cond.Wait, 8 minutes]:
+sync.runtime_notifyListWait(0xc000d0ce50, 0x30)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00051ae70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c59e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 260781 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc000f6efd0, 0x204)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005ce7e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005ce7e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 887599 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc004d61f50, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00221c360?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00078bdc0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 609522 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001d09d90, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000a6ae70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0061079e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 291339 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc00238b1d0, 0x36)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0037eca20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0037eca20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 294796 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc001143850, 0x1b3)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007d3c20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d3c20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 103379 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc0005efe10, 0x79b)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e88b40?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e88b40)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 475898 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc000c18ed0, 0xc8)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0033dc900?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0000c76c0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 293855 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc0019d7950, 0xa)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0022fe800?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002643d40)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 236691 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc0005f82d0, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001cb7000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d3320)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 609526 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001dcda10, 0x3)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000518e70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc006107d40)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 892436 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000645c10, 0xa)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00388a670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc005791320)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 101990 [sync.Cond.Wait, 8 minutes]:
+sync.runtime_notifyListWait(0xc00056f850, 0x7)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00148c670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005cf680)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 236653 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc000c33510, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000de8000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d27e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 344605 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc0024501d0, 0x37)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002b49b00?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002b49b00)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 363136 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc0013506d0, 0x1c)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001f2e800?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384f7a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 318655 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc000a08c90, 0xe7)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00384e5a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384e5a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 368664 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0017b6450, 0x38)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001212670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002a0fc20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 340800 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc00092df50, 0x41)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000159670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0040a1680)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 138398 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc0007c8290, 0x75d)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c4fc0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c4fc0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 260806 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc0034e5150, 0x1e6)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005ceea0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005ceea0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 887601 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc002046f50, 0x32)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc004383670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00221c900)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 368662 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0017b6050, 0x3)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002a0f9e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003fd69a0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 291342 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc000473b90, 0x38)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0037ecc60?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0037ecc60)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 354952 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc0001e2ad0, 0x38)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0022ffc00?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0037ed7a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 901532 [chan send]:
+6.5840/kvraft.GenericTest.func1.1()
+	/home/rda/6.5840/src/kvraft/test_test.go:262 +0x32
+6.5840/kvraft.GenericTest.func1(0x0, 0xc002386f90?, 0xc003354340)
+	/home/rda/6.5840/src/kvraft/test_test.go:297 +0x5d7
+6.5840/kvraft.run_client(0xc0022b9080?, 0xc0043d69c0, 0x80?, 0xc0041be780?, 0xc003eb5860)
+	/home/rda/6.5840/src/kvraft/test_test.go:109 +0xe4
+created by 6.5840/kvraft.spawn_clients_and_wait
+	/home/rda/6.5840/src/kvraft/test_test.go:119 +0x4c
+
+goroutine 609528 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001d27890, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc006107d40?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0000c79d0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 90660 [sync.Cond.Wait, 8 minutes]:
+sync.runtime_notifyListWait(0xc00056edd0, 0xc7)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0x40d6fe?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147e360)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 377415 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc003b28990, 0x1de)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003742fc0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc003742fc0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 289371 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc000a906d0, 0x2a)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0023c7f80?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc001593d40)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 332713 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc001563c10, 0x19)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0001b56c8?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002a0fd40)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 890249 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000f91250, 0x3)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002a0e000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0034ae5b0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 897119 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc005fabc90, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e897a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0047ed810)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 293852 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc0023068d0, 0x9)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002402400?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002643b00)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 90648 [sync.Cond.Wait, 8 minutes]:
+sync.runtime_notifyListWait(0xc000781f50, 0xb0)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e89d40?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e89d40)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 900557 [select]:
+6.5840/kvraft.(*KVServer).executeLoop(0xc00118f110)
+	/home/rda/6.5840/src/kvraft/server.go:293 +0xc6
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:434 +0x356
+
+goroutine 370057 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001d918d0, 0x21)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005ced80?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc004469180)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 288325 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc0019f7110, 0x10)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0x4537c6?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00221ca20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 260784 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc00101fc90, 0x20f)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005cea20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005cea20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 536601 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0020ee950, 0xf8)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0037430e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003ba1110)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 900569 [select]:
+6.5840/kvraft.(*KVServer).executeLoop(0xc0011a4070)
+	/home/rda/6.5840/src/kvraft/server.go:293 +0xc6
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:434 +0x356
+
+goroutine 318661 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc001cc4e10, 0x56)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00384ea20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384ea20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 288303 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc002e01950, 0x12)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00148ae70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00221c6c0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 237024 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc000adbb10, 0x44d)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e89c20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e89c20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 609514 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc002e4d4d0, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003742480?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc006107320)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 318664 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc001fbff50, 0x96)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00384ec60?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384ec60)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 901531 [chan receive]:
+6.5840/kvraft.spawn_clients_and_wait(0xc003354340, 0xc0043d69c0, 0x5, 0xc003eb5860)
+	/home/rda/6.5840/src/kvraft/test_test.go:123 +0x185
+created by 6.5840/kvraft.GenericTest
+	/home/rda/6.5840/src/kvraft/test_test.go:259 +0x6aa
+
+goroutine 330471 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc00205ab90, 0x8)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0025d3000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00221d320)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 609524 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001dccb10, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0061079e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0000c69a0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 324996 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc002fc2f90, 0x88)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c5b00?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c5b00)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 536603 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0020ef590, 0xc57)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003743560?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc003743560)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 609516 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc000eb0d10, 0x0)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00493b070?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003ae4930)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 318667 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc002141790, 0xde)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00384eea0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384eea0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 892438 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc004102bd0, 0x0)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00349d220?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc000a59d50)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 609520 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001d09450, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc006107680?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003ae58f0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 330462 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc00400fa50, 0x7)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00221c5a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00221c5a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 291364 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc001d03210, 0x42)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003c9e000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0037ed0e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 289362 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc0021ecd10, 0x32)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0001aee70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc001593680)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 288331 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc002b20cd0, 0x11)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000158670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00221cc60)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 293849 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc002c10dd0, 0x9)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0022fe000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0026437a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 189782 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc000ef3c90, 0x5dd)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00147f440?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147f440)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 354961 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc0013d0450, 0x39)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00384e360?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384e360)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 900566 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc000aecf50, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003e686c0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0011990a0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 236694 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc0002e4cd0, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000d23000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d3560)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 340791 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc002451d50, 0x24)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003f8c670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0040a10e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 332707 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc0022a3a50, 0x31)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000041ec8?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002a0f8c0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 330943 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc00401bfd0, 0x12)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00147e480?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147e480)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 189788 [sync.Cond.Wait, 7 minutes]:
+sync.runtime_notifyListWait(0xc00057ee50, 0x4eb)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00147f680?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147f680)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 363121 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc002ab01d0, 0x1b)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00092a000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384e900)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 363127 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc001727fd0, 0x1c)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00384f0e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384f0e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 287795 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc001d08d10, 0x9)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001e31000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147eea0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 294790 [sync.Cond.Wait, 6 minutes]:
+sync.runtime_notifyListWait(0xc000e83050, 0x4ce)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007d39e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d39e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 386563 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0011d73d0, 0x123)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002a0eea0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc002889500)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 900570 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc003ed7950, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003e68a20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0011a4070)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 344617 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc000d15450, 0x41)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00368c480?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00368c480)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 887595 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc004d60990, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc005791c20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00078ae00)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 368670 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0017b6b10, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002a0fe60?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003fd6a80)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 892440 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc004103350, 0xb)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0011dce70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0057917a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 386555 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0011d6d90, 0x128)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002a0eb40?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc002889420)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 330965 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc002d0f710, 0x1d)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00051a670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147e7e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 370063 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc000fe1110, 0x130)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005cf200?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005cf200)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 363133 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc002204c10, 0x1c)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000344800?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384f560)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 610082 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0030b4a10, 0x105)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c4b40?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0048be070)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 475890 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001e42a10, 0xd5)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0033dc120?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0048bf6c0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 377391 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc003b282d0, 0x3ea)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003742d80?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc003742d80)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 885997 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc005949890, 0x3)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc005729e60?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00596d030)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 610084 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0030b4d90, 0x6b5)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c4c60?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c4c60)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 332710 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc001299810, 0x23)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00148d6c8?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002a0fb00)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 368666 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc0017b6610, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002a0fc20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003fd6a10)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 340803 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc0036884d0, 0x2d)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0037c7380?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0040a17a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 880279 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc001e6d1d0, 0x72)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003f8f670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00917f9e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 344608 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc000c19190, 0x4e)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002b49d40?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002b49d40)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 325008 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc00298cb90, 0x62)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0007d2a20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0007d2a20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 717149 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0014420d0, 0xf2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0040a0c60?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003fd68c0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 339677 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc00184d350, 0x8)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0022fec00?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc003182d80)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 340797 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc00092d0d0, 0x2c)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000a70e70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0040a1560)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 339671 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc001c7f250, 0x7)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0022ff000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0031827e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 332704 [sync.Cond.Wait, 5 minutes]:
+sync.runtime_notifyListWait(0xc001fbd8d0, 0x29)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000a6e6c8?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002a0f680)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 336420 [sync.Cond.Wait, 4 minutes]:
+sync.runtime_notifyListWait(0xc001378010, 0x23)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00147f9e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00147f9e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 386557 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0011d6f90, 0x171a)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002a0ec60?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002a0ec60)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 475902 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc000c19ad0, 0xc1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0033dcd80?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003fd6690)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 344602 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc0035edf10, 0x3b)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0037b63c0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002b497a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 609518 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001d08390, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000a6a670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc006107680)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 536597 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0011670d0, 0x109)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0037427e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003ba00e0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 609510 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc000e27410, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003742000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc006106fc0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 897117 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc005fab9d0, 0x34)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0x4537c6?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e897a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 900568 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc0027f9390, 0x20)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0029ce670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc003e68a20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 354949 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc002097750, 0x52)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0022fec00?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0037ed560)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 475894 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc000ecf650, 0xcd)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0033dc5a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0000c6700)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 475856 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0015284d0, 0xc13)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0033dc120?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0033dc120)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 610078 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0030b4390, 0x11e)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0048be000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0048be000)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 880221 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc001e6c090, 0x5)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00917f680?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0013bbf80)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 897113 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc005fab0d0, 0x27)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0019fd9a8?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e89320)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 886003 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc005949d10, 0x1e)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002b10e70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc005986120)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 609512 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc002e4c910, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc006106fc0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00895d810)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 536593 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001c92b50, 0xfb)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003742480?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003b71dc0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 363130 [sync.Cond.Wait, 3 minutes]:
+sync.runtime_notifyListWait(0xc000178350, 0x1b)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001f2f000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00384f320)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 386551 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc0011d6a10, 0x12a)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002a0ea20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0028893b0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 377409 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc003b283d0, 0x3e)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003ae4770?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003ae4770)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 892446 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0004c2b90, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0005ce6c0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc000b03ce0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 903032 [chan receive]:
+6.5840/labrpc.(*ClientEnd).Call(0xc001196200, {0x648ba8?, 0x8e?}, {0x5f6ce0, 0xc0015e08c0}, {0x5f6d20, 0xc003fe8580})
+	/home/rda/6.5840/src/labrpc/labrpc.go:112 +0x246
+6.5840/raft.(*Raft).sendAppendEntries(0xc005791d40, 0x2, {0x1a, 0x1, 0x91, 0x1a, {0x0, 0x0, 0x0}, 0x91})
+	/home/rda/6.5840/src/raft/raft.go:686 +0xfc
+created by 6.5840/raft.(*Raft).broadcastHeartBeat
+	/home/rda/6.5840/src/raft/raft.go:832 +0x345
+
+goroutine 886001 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc005949b50, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc005986000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00596d0a0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 879796 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc002c125d0, 0xc)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00310d670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0034fcc60)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 887607 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000a047d0, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00221d440?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00085dce0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 901535 [select]:
+6.5840/kvraft.(*Clerk).Get(0xc001710080, {0x64f01e, 0x1})
+	/home/rda/6.5840/src/kvraft/client.go:87 +0x2d4
+6.5840/kvraft.Get(0xc0043d69c0, 0x2?, {0x64f01e, 0x1}, 0xc003325ca0, 0x3)
+	/home/rda/6.5840/src/kvraft/test_test.go:49 +0x95
+6.5840/kvraft.GenericTest.func1(0x3, 0xc0023872f0?, 0xc003354340)
+	/home/rda/6.5840/src/kvraft/test_test.go:290 +0x3da
+6.5840/kvraft.run_client(0xc0022d3600?, 0xc0043d69c0, 0x200?, 0xc0041be960?, 0xc003eb5860)
+	/home/rda/6.5840/src/kvraft/test_test.go:109 +0xe4
+created by 6.5840/kvraft.spawn_clients_and_wait
+	/home/rda/6.5840/src/kvraft/test_test.go:119 +0x4c
+
+goroutine 879794 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0029ff910, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0034fc900?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc004677500)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 901534 [chan send]:
+6.5840/kvraft.GenericTest.func1.1()
+	/home/rda/6.5840/src/kvraft/test_test.go:262 +0x32
+6.5840/kvraft.GenericTest.func1(0x2, 0xc0023871d0?, 0xc003354340)
+	/home/rda/6.5840/src/kvraft/test_test.go:297 +0x5d7
+6.5840/kvraft.run_client(0x0?, 0xc0043d69c0, 0x71?, 0xc000e897a0?, 0xc003eb5860)
+	/home/rda/6.5840/src/kvraft/test_test.go:109 +0xe4
+created by 6.5840/kvraft.spawn_clients_and_wait
+	/home/rda/6.5840/src/kvraft/test_test.go:119 +0x4c
+
+goroutine 894967 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000959450, 0x0)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003acf3d0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00334f880)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 812740 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0012c4150, 0xa7)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0028881c0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0028881c0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 879776 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0029ff290, 0xc)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0x41e220?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0034fc900)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 900560 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc003702410, 0x19)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0x40d6fe?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc003e68360)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 894979 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000959e50, 0x3)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0033dca20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00334f9d0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 900562 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc002646190, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003e68360?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0011980e0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 880273 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc001e6c710, 0x7)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00917f7a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0092ee000)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 903036 [sleep]:
+time.Sleep(0x16e3600)
+	/usr/local/go/src/runtime/time.go:195 +0x135
+6.5840/labrpc.(*Network).processReq(0xc003ac7e00, {{0x600a80, 0xc000398f20}, {0x648ba8, 0x12}, {0x69b860, 0x5f6ce0}, {0xc00320cc00, 0xc1, 0x100}, ...})
+	/home/rda/6.5840/src/labrpc/labrpc.go:225 +0xc5
+created by 6.5840/labrpc.MakeNetwork.func1
+	/home/rda/6.5840/src/labrpc/labrpc.go:157 +0x39
+
+goroutine 887593 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0019b3450, 0x2a)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003585e70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc005791c20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 903031 [chan receive]:
+6.5840/labrpc.(*ClientEnd).Call(0xc0011961c0, {0x648ba8?, 0x0?}, {0x5f6ce0, 0xc0015e03c0}, {0x5f6d20, 0xc003fe8500})
+	/home/rda/6.5840/src/labrpc/labrpc.go:112 +0x246
+6.5840/raft.(*Raft).sendAppendEntries(0xc005791d40, 0x0, {0x1a, 0x1, 0x91, 0x1a, {0x0, 0x0, 0x0}, 0x91})
+	/home/rda/6.5840/src/raft/raft.go:686 +0xfc
+created by 6.5840/raft.(*Raft).broadcastHeartBeat
+	/home/rda/6.5840/src/raft/raft.go:832 +0x345
+
+goroutine 812750 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc001de5c10, 0x2d0)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00368cea0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00368cea0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 717139 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc00157f150, 0x435)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0040a0240?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0040a0240)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 717151 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001442710, 0x3f3)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0040a1c20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0040a1c20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 886007 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc005949fd0, 0x1d)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0011e3e70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc005986240)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 886011 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc00598c290, 0x1e)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0059865a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0059865a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 894965 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000959310, 0x13)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001dea670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0037edd40)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 900558 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc0012cc990, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc005791d40?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00118f110)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 900551 [sleep]:
+time.Sleep(0x54e0840)
+	/usr/local/go/src/runtime/time.go:195 +0x135
+6.5840/raft.(*Raft).ticker(0xc005791440)
+	/home/rda/6.5840/src/raft/raft.go:969 +0x6b
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1020 +0x30e
+
+goroutine 897107 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc005f83fd0, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e88120?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0047d48c0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 887605 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000a04410, 0x2c)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001dec670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00221d440)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 812746 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc001dccd50, 0x2e4)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00368cb40?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00368cb40)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 717137 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc00261f910, 0xe9)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0040a0000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00144d8f0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 879806 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc002649910, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002888540?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc002888540)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 897109 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc005faa550, 0x1b)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0037de670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e885a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 880285 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc001e6dad0, 0x5)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00917fb00?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0092ee150)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 879802 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0026b4850, 0x0)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0034fd320?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00895d490)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 894969 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000959710, 0x2b)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002b12670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0033dc000)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 717141 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc00157fd50, 0xf4)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0040a0240?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00895c850)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 897105 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc005f83ad0, 0x26)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003580670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc000e88120)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 880277 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc001e6cd90, 0x6)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00917f8c0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0092ee070)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 879798 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0019ae950, 0x0)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc012c08510?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00895c460)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 880281 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc001e6d410, 0x6)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00917f9e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0092ee0e0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 890239 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000917950, 0x36)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003f91e40?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c5200)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 894975 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000959b10, 0x3)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0033dc480?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00334f960)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 900567 [sleep]:
+time.Sleep(0x53ec600)
+	/usr/local/go/src/runtime/time.go:195 +0x135
+6.5840/raft.(*Raft).ticker(0xc003e68a20)
+	/home/rda/6.5840/src/raft/raft.go:969 +0x6b
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1020 +0x30e
+
+goroutine 894961 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000958f90, 0x11)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00357f670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0037edb00)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 897123 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc005ea4610, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e899e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0047f6770)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 894973 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000959a10, 0x33)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0x0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0033dc480)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 890257 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc001558990, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002a0e6c0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0034c0540)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 879800 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0026a4690, 0xf)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003f90670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0034fd320)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 900556 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc003763d10, 0x20)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003581670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc005791d40)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 879808 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc00209dcd0, 0xb)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001592120?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc001592120)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 717153 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc001443650, 0xf9)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0040a1c20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003fd7a40)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 890241 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0023b3110, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0000c5200?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0034a0620)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 892444 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0002ebb90, 0xb)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0x69b860?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0005ce6c0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 890255 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc002330690, 0x32)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0x4537c6?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002a0e6c0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 900565 [select]:
+6.5840/kvraft.(*KVServer).executeLoop(0xc0011990a0)
+	/home/rda/6.5840/src/kvraft/server.go:293 +0xc6
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:434 +0x356
+
+goroutine 892442 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc004103e10, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0057917a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc000b02d20)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 885999 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc005949a50, 0x22)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0x41e220?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc005986000)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 892412 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0008d3b50, 0xc)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0029cd670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0057905a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 880283 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc001e6d810, 0x77)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0x41e220?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00917fb00)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 901536 [select]:
+6.5840/kvraft.(*Clerk).Get(0xc000df5280, {0x64f01f, 0x1})
+	/home/rda/6.5840/src/kvraft/client.go:87 +0x2d4
+6.5840/kvraft.Get(0xc0043d69c0, 0x2?, {0x64f01f, 0x1}, 0xc003325ca0, 0x4)
+	/home/rda/6.5840/src/kvraft/test_test.go:49 +0x95
+6.5840/kvraft.GenericTest.func1(0x4, 0xc002386e70?, 0xc003354340)
+	/home/rda/6.5840/src/kvraft/test_test.go:290 +0x3da
+6.5840/kvraft.run_client(0x0?, 0xc0043d69c0, 0x76?, 0xc005791d40?, 0xc003eb5860)
+	/home/rda/6.5840/src/kvraft/test_test.go:109 +0xe4
+created by 6.5840/kvraft.spawn_clients_and_wait
+	/home/rda/6.5840/src/kvraft/test_test.go:119 +0x4c
+
+goroutine 903038 [sleep]:
+time.Sleep(0xf42400)
+	/usr/local/go/src/runtime/time.go:195 +0x135
+6.5840/labrpc.(*Network).processReq(0xc003ac7e00, {{0x600a80, 0xc000398f80}, {0x648ba8, 0x12}, {0x69b860, 0x5f6ce0}, {0xc00320ce00, 0xc1, 0x100}, ...})
+	/home/rda/6.5840/src/labrpc/labrpc.go:225 +0xc5
+created by 6.5840/labrpc.MakeNetwork.func1
+	/home/rda/6.5840/src/labrpc/labrpc.go:157 +0x39
+
+goroutine 717143 [chan send, 2 minutes]:
+6.5840/raft.(*Raft).apply(0xc0040a06c0)
+	/home/rda/6.5840/src/raft/raft.go:353 +0x316
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 717147 [sync.Cond.Wait, 2 minutes]:
+sync.runtime_notifyListWait(0xc003fc32d0, 0x415)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0040a0c60?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0040a0c60)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 897115 [sync.Cond.Wait]:
+sync.runtime_notifyListWait(0xc005fab490, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e89320?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0047ec850)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 900561 [select]:
+6.5840/kvraft.(*KVServer).executeLoop(0xc0011980e0)
+	/home/rda/6.5840/src/kvraft/server.go:293 +0xc6
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:434 +0x356
+
+goroutine 900559 [sleep]:
+time.Sleep(0x623a7c0)
+	/usr/local/go/src/runtime/time.go:195 +0x135
+6.5840/raft.(*Raft).ticker(0xc003e68360)
+	/home/rda/6.5840/src/raft/raft.go:969 +0x6b
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1020 +0x30e
+
+goroutine 812754 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000b65250, 0x286)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00368d200?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00368d200)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 812756 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc00108dc10, 0xaa)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00368d200?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc003fd6540)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 886009 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc00598c0d0, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc005986240?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00596d180)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 880219 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc00288fc10, 0x75)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003cf0e70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00917f680)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 894971 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000959810, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0033dc000?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00334f8f0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 903033 [chan receive]:
+6.5840/labrpc.(*ClientEnd).Call(0xc001196220, {0x648ba8?, 0xc00306b300?}, {0x5f6ce0, 0xc0015e0cc0}, {0x5f6d20, 0xc003fe8600})
+	/home/rda/6.5840/src/labrpc/labrpc.go:112 +0x246
+6.5840/raft.(*Raft).sendAppendEntries(0xc005791d40, 0x3, {0x1a, 0x1, 0x91, 0x1a, {0x0, 0x0, 0x0}, 0x91})
+	/home/rda/6.5840/src/raft/raft.go:686 +0xfc
+created by 6.5840/raft.(*Raft).broadcastHeartBeat
+	/home/rda/6.5840/src/raft/raft.go:832 +0x345
+
+goroutine 812742 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0012c4fd0, 0x3e0)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00368c7e0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00368c7e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 900553 [select]:
+6.5840/kvraft.(*KVServer).executeLoop(0xc00118e150)
+	/home/rda/6.5840/src/kvraft/server.go:293 +0xc6
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:434 +0x356
+
+goroutine 887589 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0019b2a10, 0x2b)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc00357e640?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0057919e0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 879804 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0026b5710, 0x14)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0001b4670?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0034fd680)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 890243 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc0023b3d90, 0x31)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001216e70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0000c5680)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 886005 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc005949e10, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc005986120?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00596d110)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 890247 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc001e5b950, 0x37)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0029cce70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc002a0e000)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 880223 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc001e6c490, 0x85)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001489e70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc00917f7a0)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 886013 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc00598c390, 0x2)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0059865a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc00596d1f0)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 812744 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc002f94d50, 0x105)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc002889180?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc002889180)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 897111 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc005faaad0, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc000e885a0?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc0047d5880)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 894977 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc000959d50, 0x2c)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc0033dca20?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc0033dca20)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+
+goroutine 900563 [sleep]:
+time.Sleep(0x53ec600)
+	/usr/local/go/src/runtime/time.go:195 +0x135
+6.5840/raft.(*Raft).ticker(0xc003e686c0)
+	/home/rda/6.5840/src/raft/raft.go:969 +0x6b
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1020 +0x30e
+
+goroutine 903037 [sleep]:
+time.Sleep(0x989680)
+	/usr/local/go/src/runtime/time.go:195 +0x135
+6.5840/labrpc.(*Network).processReq(0xc003ac7e00, {{0x600a80, 0xc000398f60}, {0x648ba8, 0x12}, {0x69b860, 0x5f6ce0}, {0xc00320cd00, 0xc1, 0x100}, ...})
+	/home/rda/6.5840/src/labrpc/labrpc.go:225 +0xc5
+created by 6.5840/labrpc.MakeNetwork.func1
+	/home/rda/6.5840/src/labrpc/labrpc.go:157 +0x39
+
+goroutine 879810 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc00238bbd0, 0x1)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc001592120?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/kvraft.(*KVServer).snapshotLoop(0xc002889730)
+	/home/rda/6.5840/src/kvraft/server.go:97 +0x16a
+created by 6.5840/kvraft.StartKVServer
+	/home/rda/6.5840/src/kvraft/server.go:437 +0x3a5
+
+goroutine 885995 [sync.Cond.Wait, 1 minutes]:
+sync.runtime_notifyListWait(0xc005949790, 0x30)
+	/usr/local/go/src/runtime/sema.go:527 +0x14c
+sync.(*Cond).Wait(0xc003cf6e70?)
+	/usr/local/go/src/sync/cond.go:70 +0x8c
+6.5840/raft.(*Raft).apply(0xc005729e60)
+	/home/rda/6.5840/src/raft/raft.go:318 +0x276
+created by 6.5840/raft.Make
+	/home/rda/6.5840/src/raft/raft.go:1021 +0x34b
+exit status 2
+FAIL	6.5840/kvraft	600.064s
