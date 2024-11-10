@@ -79,6 +79,29 @@ func Assert(condition bool, msg string) {
 	}
 }
 
+func (sc *ShardCtrler) mostShardsGID() int {
+	maxn_gid := 0
+	for i, j := range sc.shardNums {
+		if maxn_gid == 0 || j > sc.shardNums[maxn_gid] {
+			maxn_gid = i
+		}
+	}
+
+	return maxn_gid
+}
+
+
+func (sc *ShardCtrler) leastShardsGID() int {
+	minn_gid := 0
+	for i, j := range sc.shardNums {
+		if minn_gid == 0 || j < sc.shardNums[minn_gid] {
+			minn_gid = i
+		}
+	}
+
+	return minn_gid
+}
+
 // 返回值为错误码
 func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 	sc.mu.Lock()
@@ -157,18 +180,14 @@ func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 	} else {
 		for gid, _ := range servers {
 			// 找出最多shard的sg
-			maxn_gid := 0
-			for i, j := range sc.shardNums {
-				if maxn_gid == 0 || j > sc.shardNums[maxn_gid] {
-					maxn_gid = i
-				}
-			}
+			maxn_gid := sc.mostShardsGID()
 
-			if sc.shardNums[maxn_gid] == 1 {
+			sc.shardNums[gid] = sc.shardNums[maxn_gid] / 2
 
+			if sc.shardNums[gid] == 0 {
+				break
 			}
 			// 分为两半给新的sg
-			sc.shardNums[gid] = sc.shardNums[maxn_gid] / 2
 			sc.shardNums[maxn_gid] -= sc.shardNums[gid]
 
 			// 修改Shard
@@ -191,8 +210,8 @@ func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 		sum := 0
 		for gid, x := range sc.shardNums {
 			s := 0
-			for _, j := range config.Shards {
-				if j == gid {
+			for _, g := range config.Shards {
+				if g == gid {
 					s++
 				}
 			}
@@ -207,6 +226,25 @@ func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 
 
 func (sc *ShardCtrler) doLeave(GIDs []int) Err {
+	config := sc.configs[sc.nextCfgIdx - 1]
+	config.Num = sc.nextCfgIdx
+	sc.nextCfgIdx++
+
+	for _, GID := range GIDs {
+		delete(config.Groups, GID)
+		// 找到目前shard最少的SG
+		minn_gid := sc.leastShardsGID()
+
+		sc.shardNums[minn_gid] += sc.shardNums[GID]
+		delete(sc.shardNums, GID)
+
+		for i, g := range config.Shards {
+			if g == GID {
+				config.Shards[i] = minn_gid
+			}
+		}
+	}
+
 	return OK
 }
 
@@ -225,6 +263,9 @@ func (sc *ShardCtrler) doMove(shard int, GID int) Err {
 
 
 func (sc *ShardCtrler) doQuery(num int) (Err, Config) {
+	if num == -1 {
+		num = sc.nextCfgIdx - 1
+	}
 	if num < 0 || num >= sc.nextCfgIdx {
 		return ErrNoExist, Config{}
 	}
