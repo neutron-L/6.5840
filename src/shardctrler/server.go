@@ -68,6 +68,14 @@ type Op struct {
 	Seqno	 		int64
 }
 
+
+
+func Assert(condition bool, msg string) {
+	if !condition {
+		log.Fatalf("Assertion failed: %s", msg)
+	}
+}
+
 // 返回值为错误码
 func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 	sc.mu.Lock()
