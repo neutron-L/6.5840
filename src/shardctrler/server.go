@@ -45,6 +45,9 @@ type ShardCtrler struct {
 	condDict		map[OpType]*sync.Cond
 	configs 		[]Config // indexed by config num
 	nextCfgIdx		int
+
+	// 记录每个sg拥有的shard数量
+	shardNums		map[int]int
 }
 
 
@@ -122,16 +125,102 @@ func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 }
 
 func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
+	config := sc.configs[sc.nextCfgIdx - 1]
+	config.Num = sc.nextCfgIdx
+	sc.nextCfgIdx++
 
+	// 合并servers
+	for gid, sg := range servers {
+		_, ok := config.Groups[gid]
+		Assert(!ok, "Duplicate server group")
+		config.Groups[gid] = sg
+	}
+
+	if config.Num == 1 {
+		num_of_sg := len(servers)
+		size := NShards / num_of_sg
+		rem := NShards % num_of_sg
+		i := 0   // 第几个sg
+		start := 0  // 开始索引
+		for gid, _ := range servers {
+			sc.shardNums[gid] = size
+			if i < rem {
+				sc.shardNums[gid]++
+			}
+			for j := 0; j < sc.shardNums[gid]; j++ {
+				config.Shards[start + j] = gid
+			}
+
+			start += sc.shardNums[gid]
+			i++
+		}
+	} else {
+		for gid, _ := range servers {
+			// 找出最多shard的sg
+			maxn_gid := 0
+			for i, j := range sc.shardNums {
+				if maxn_gid == 0 || j > sc.shardNums[maxn_gid] {
+					maxn_gid = i
+				}
+			}
+
+			if sc.shardNums[maxn_gid] == 1 {
+
+			}
+			// 分为两半给新的sg
+			sc.shardNums[gid] = sc.shardNums[maxn_gid] / 2
+			sc.shardNums[maxn_gid] -= sc.shardNums[gid]
+
+			// 修改Shard
+			count := 0
+			for i, g := range config.Shards {
+				if g == maxn_gid {
+					config.Shards[i] = gid
+					count++
+
+					if count == sc.shardNums[gid] {
+						break
+					}
+				}
+			}
+		}
+	}
+
+	// variant检查
+	if Debug {
+		sum := 0
+		for gid, x := range sc.shardNums {
+			s := 0
+			for _, j := range config.Shards {
+				if j == gid {
+					s++
+				}
+			}
+			Assert(s == x, "the number of shard is not equal to shardNums record")
+			sum += x
+		}
+		Assert(sum == NShards, "the sum of shard nums is not equal to NShard")
+	}
+
+	return OK
 }
 
 
 func (sc *ShardCtrler) doLeave(GIDs []int) Err {
-	
+	return OK
 }
 
 func (sc *ShardCtrler) doMove(shard int, GID int) Err {
-	
+	config := sc.configs[sc.nextCfgIdx - 1]
+	config.Num = sc.nextCfgIdx
+	sc.nextCfgIdx++
+
+	old_gid := config.Shards[shard]
+	sc.shardNums[old_gid]--
+	sc.shardNums[GID]++
+	config.Shards[shard] = GID
+
+	return OK
 }
 
 
@@ -206,6 +295,8 @@ func (sc *ShardCtrler) executeLoop() {
 					}
 		
 					sc.condDict[op.Operation].Broadcast()
+					Assert(sc.lastApplied < msg.CommandIndex, "apply a old command")
+					sc.lastApplied = msg.CommandIndex
 				} else if msg.SnapshotValid {
 		
 				}
