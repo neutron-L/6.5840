@@ -32,6 +32,7 @@ const (
 	OK = "OK"
 	ErrWrongLeader = "ErrWrongLeader"
 	ErrNoExist     = "ErrNoExist"
+	ErrWrongGroup  = "ErrWrongGroup "
 )
 
 type Err string
