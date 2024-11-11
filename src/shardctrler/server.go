@@ -107,7 +107,10 @@ func (sc *ShardCtrler) mostShardsGID() int {
 func (sc *ShardCtrler) leastShardsGID(exclude int) int {
 	minn_gid := 0
 	for i, j := range sc.shardNums {
-		if (minn_gid == 0 || j < sc.shardNums[minn_gid]) && (exclude == -1 || i != exclude) {
+		if i == exclude {
+			continue
+		}
+		if minn_gid == 0 || j < sc.shardNums[minn_gid] {
 			minn_gid = i
 		}
 	}
@@ -147,11 +150,11 @@ func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 		sc.condDict[op.Operation].Wait()
 
 		if sc.killed() {
-			return ErrWrongLeader, Config{}
+			return ErrWrongLeader, Config{Num: -1}
 		} 
 		
 		if _, isLeader := sc.rf.GetState(); !isLeader {
-			return ErrWrongLeader, Config{}
+			return ErrWrongLeader, Config{Num: -1}
 		} 
 
 		// 判断是否当前request被执行
@@ -167,7 +170,7 @@ func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 		}
 	}
 
-	return ErrWrongLeader, Config{}
+	return ErrWrongLeader, Config{Num: -1}
 }
 
 func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
@@ -278,14 +281,22 @@ func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 
 		if minn_gid != 0 {
 			sc.shardNums[minn_gid] += sc.shardNums[GID]
-		} 
+		} else {
+			DPrintf("only GID %v", GID)
+		}
 
 		for i, g := range config.Shards {
 			if g == GID {
 				config.Shards[i] = minn_gid
 			}
 		}
+
 		delete(sc.shardNums, GID)
+
+		if minn_gid == 0 {
+			Assert(len(sc.shardNums) == 0, "fuck")
+			DPrintf("config shards %v", config.Shards)
+		}
 	}
 
 	// variant检查
@@ -342,12 +353,15 @@ func (sc *ShardCtrler) doMove(shard int, GID int) Err {
 
 
 func (sc *ShardCtrler) doQuery(num int) (Err, Config) {
+	DPrintf("Query: %v", num)
 	if num == -1 || num >= sc.nextCfgIdx {
+		DPrintf("Query: change num %v -> %v", num, sc.nextCfgIdx - 1)
 		num = sc.nextCfgIdx - 1
 	}
 	if num < 0 {
 		return ErrNoExist, Config{}
 	}
+	
 	Assert(num == sc.configs[num].Num, "num is not consistent")
 	DPrintf("config[%v]: Num %v Shard %v", num, sc.configs[num].Num, sc.configs[num].Shards)
 
