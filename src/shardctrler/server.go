@@ -12,7 +12,7 @@ import (
 )
 
 
-const Debug = false
+const Debug = true
 const Delay = 400
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
@@ -79,6 +79,20 @@ func Assert(condition bool, msg string) {
 	}
 }
 
+func ConfigClone(origin_config Config) Config {
+	config := Config{Num: origin_config.Num}
+
+	config.Groups = make(map[int][]string)
+
+	for gid, arr := range origin_config.Groups {
+		config.Groups[gid] = make([]string, 0)
+		copy(config.Groups[gid], arr)
+	}
+	copy(config.Shards[:], origin_config.Shards[:])
+
+	return config
+}
+
 func (sc *ShardCtrler) mostShardsGID() int {
 	maxn_gid := 0
 	for i, j := range sc.shardNums {
@@ -104,20 +118,30 @@ func (sc *ShardCtrler) leastShardsGID() int {
 
 // 返回值为错误码
 func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
-	sc.mu.Lock()
-	defer sc.mu.Unlock()
-
-	_, _, isLeader := sc.rf.Start(op)
-
-	if !isLeader {
-		return ErrWrongLeader, Config{}
-	}
-
 	var cid int64
 	var seqno int64
 
 	var args = op.Args
 	cid, seqno = args.GetClientId(), args.GetSeqno()
+	
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+
+	_, _, isLeader := sc.rf.Start(op)
+
+
+	args = op.Args
+	cid, seqno = args.GetClientId(), args.GetSeqno()
+		
+
+	if !isLeader {
+		DPrintf("[%v] Server[%v]->Client[%v]: got %v not leader", seqno, sc.me, cid, op.Operation)
+
+		return ErrWrongLeader, Config{}
+	}
+
+	DPrintf("[%v] Server[%v]: got %v from Client[%v], wait commit", seqno, sc.me, op.Operation, cid)
+	
 
 	for !sc.killed() {
 		// 条件变量等待被唤醒
@@ -134,8 +158,8 @@ func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 		// 判断是否当前request被执行
 		if record, ok := sc.History[cid]; !ok || record.Seqno < seqno {
 			if ok {
-				DPrintf("[%v] Server[%v]: wait %v entry.Seqno = %v; args.Seqno = %v", 
-					seqno, sc.me, op.Operation, record.Seqno, seqno)
+				DPrintf("[%v] Server[%v]: wait %v entry.Seqno = %v cid = %v", 
+					seqno, sc.me, op.Operation, record.Seqno, cid)
 			}
 			continue
 		} else {
@@ -148,10 +172,11 @@ func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 }
 
 func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
-	config := sc.configs[sc.nextCfgIdx - 1]
+	config := ConfigClone(sc.configs[sc.nextCfgIdx - 1])
 	config.Num = sc.nextCfgIdx
 	sc.nextCfgIdx++
 
+	Assert(config.Num == sc.configs[sc.nextCfgIdx - 1].Num + 1, "the config num is not increase")
 	// 合并servers
 	for gid, sg := range servers {
 		_, ok := config.Groups[gid]
@@ -219,14 +244,18 @@ func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 			sum += x
 		}
 		Assert(sum == NShards, "the sum of shard nums is not equal to NShard")
+		Assert(len(sc.shardNums) == len(config.Groups), "the number of sg is not consistent")
 	}
+
+	sc.configs = append(sc.configs, config)
+	DPrintf("config[%v]: Shard %v", config.Num, config.Shards)
 
 	return OK
 }
 
 
 func (sc *ShardCtrler) doLeave(GIDs []int) Err {
-	config := sc.configs[sc.nextCfgIdx - 1]
+	config := ConfigClone(sc.configs[sc.nextCfgIdx - 1])
 	config.Num = sc.nextCfgIdx
 	sc.nextCfgIdx++
 
@@ -244,12 +273,15 @@ func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 			}
 		}
 	}
+	sc.configs = append(sc.configs, config)
+	DPrintf("config[%v]: Shard %v", config.Num, config.Shards)
+
 
 	return OK
 }
 
 func (sc *ShardCtrler) doMove(shard int, GID int) Err {
-	config := sc.configs[sc.nextCfgIdx - 1]
+	config := ConfigClone(sc.configs[sc.nextCfgIdx - 1])
 	config.Num = sc.nextCfgIdx
 	sc.nextCfgIdx++
 
@@ -257,6 +289,10 @@ func (sc *ShardCtrler) doMove(shard int, GID int) Err {
 	sc.shardNums[old_gid]--
 	sc.shardNums[GID]++
 	config.Shards[shard] = GID
+
+	sc.configs = append(sc.configs, config)
+	DPrintf("config[%v]: Shard %v", config.Num, config.Shards)
+
 
 	return OK
 }
@@ -298,6 +334,7 @@ func (sc *ShardCtrler) executeLoop() {
 	var args ReqArgs
 	var cid   int64
 	var seqno int64
+
 	for !sc.killed() {
 		select {
 			case msg := <-sc.applyCh: {
@@ -406,6 +443,7 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister)
 	sc.condDict[MOVE]  = sync.NewCond(&sc.mu)
 	sc.condDict[QUERY] = sync.NewCond(&sc.mu)
 
+	sc.shardNums = make(map[int]int)
 	go sc.executeLoop()
     
 
