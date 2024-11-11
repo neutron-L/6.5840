@@ -305,29 +305,33 @@ func (sc *ShardCtrler) doQuery(num int) (Err, Config) {
 	if num < 0 || num >= sc.nextCfgIdx {
 		return ErrNoExist, Config{}
 	}
+	DPrintf("config[%v]: Shard %v", sc.configs[num].Num, sc.configs[num].Shards)
+
 	return OK, sc.configs[num]
 }
 
 func (sc *ShardCtrler) Join(args *JoinArgs, reply *JoinReply) {
 	// Your code here.
 	reply.Err, _ = sc.handleReq(Op{Operation: JOIN, Args: args, ClientId: args.ClientId, Seqno: args.Seqno})
-
+	reply.WrongLeader = reply.Err == ErrWrongLeader
 }
 
 func (sc *ShardCtrler) Leave(args *LeaveArgs, reply *LeaveReply) {
 	// Your code here.
 	reply.Err, _ = sc.handleReq(Op{Operation: LEAVE, Args: args})
+	reply.WrongLeader = reply.Err == ErrWrongLeader
 }
 
 func (sc *ShardCtrler) Move(args *MoveArgs, reply *MoveReply) {
 	// Your code here.
 	reply.Err, _ = sc.handleReq(Op{Operation: MOVE, Args: args})
-
+	reply.WrongLeader = reply.Err == ErrWrongLeader
 }
 
 func (sc *ShardCtrler) Query(args *QueryArgs, reply *QueryReply) {
 	// Your code here.
 	reply.Err, reply.Config = sc.handleReq(Op{Operation: QUERY, Args: args})
+	reply.WrongLeader = reply.Err == ErrWrongLeader
 }
 
 func (sc *ShardCtrler) executeLoop() {
@@ -352,8 +356,9 @@ func (sc *ShardCtrler) executeLoop() {
 						DPrintf("[%v]executed: record.cid = %v; record.Seqno = %v; op.Seqno = %v", sc.me, cid, record.Seqno, seqno)
 					} else {
 						if !ok {
-							record = Record{Seqno: seqno}
+							record = Record{}
 						}
+						record.Seqno = seqno
 						switch op.Operation {
 						case JOIN: {
 							record.Err = sc.doJoin(args.(*JoinArgs).Servers)
@@ -370,10 +375,13 @@ func (sc *ShardCtrler) executeLoop() {
 						}
 		
 						sc.History[cid] = record
+						DPrintf("Server[%v]: execute client[%v][%v]", sc.me, cid, record.Seqno)
 					}
 		
 					sc.condDict[op.Operation].Broadcast()
 					Assert(sc.lastApplied < msg.CommandIndex, "apply a old command")
+					DPrintf("Server[%v]: update lastApplied to command index %v -> %v", sc.me, sc.lastApplied, msg.CommandIndex)
+
 					sc.lastApplied = msg.CommandIndex
 				} else if msg.SnapshotValid {
 		
@@ -431,6 +439,7 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister)
 	sc.configs[0].Groups = map[int][]string{}
 
 	labgob.Register(Op{})
+	labgob.Register(QueryArgs{})
 	sc.applyCh = make(chan raft.ApplyMsg)
 	sc.rf = raft.Make(servers, me, persister, sc.applyCh)
 
