@@ -105,10 +105,10 @@ func (sc *ShardCtrler) mostShardsGID() int {
 }
 
 
-func (sc *ShardCtrler) leastShardsGID() int {
+func (sc *ShardCtrler) leastShardsGID(exclude int) int {
 	minn_gid := 0
 	for i, j := range sc.shardNums {
-		if minn_gid == 0 || j < sc.shardNums[minn_gid] {
+		if (minn_gid == 0 || j < sc.shardNums[minn_gid]) && (exclude == -1 || i != exclude) {
 			minn_gid = i
 		}
 	}
@@ -204,6 +204,7 @@ func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 			start += sc.shardNums[gid]
 			i++
 		}
+		Assert(start == NShards, "start should equal to NShards")
 	} else {
 		for gid, _ := range servers {
 			// 找出最多shard的sg
@@ -234,6 +235,8 @@ func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 
 	// variant检查
 	if Debug {
+		DPrintf("Join: ")
+
 		sum := 0
 		for gid, x := range sc.shardNums {
 			s := 0
@@ -245,7 +248,10 @@ func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 			Assert(s == x, "the number of shard is not equal to shardNums record")
 			sum += x
 		}
-		Assert(sum == NShards, "the sum of shard nums is not equal to NShard")
+		if sum != NShards {
+			DPrintf("num %v sum %v NShards %v", config.Num, sum, NShards)
+		}
+		Assert(sum == NShards || sum == 0, "the sum of shard nums is not equal to NShard or 0")
 		Assert(len(sc.shardNums) == len(config.Groups), "the number of sg is not consistent")
 	}
 
@@ -267,17 +273,42 @@ func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 	for _, GID := range GIDs {
 		delete(config.Groups, GID)
 		// 找到目前shard最少的SG
-		minn_gid := sc.leastShardsGID()
+		minn_gid := sc.leastShardsGID(GID)
 
-		sc.shardNums[minn_gid] += sc.shardNums[GID]
-		delete(sc.shardNums, GID)
+		if minn_gid != 0 {
+			sc.shardNums[minn_gid] += sc.shardNums[GID]
+		} 
 
 		for i, g := range config.Shards {
 			if g == GID {
 				config.Shards[i] = minn_gid
 			}
 		}
+		delete(sc.shardNums, GID)
 	}
+
+	// variant检查
+	if Debug {
+		DPrintf("Leave: ")
+		sum := 0
+		for gid, x := range sc.shardNums {
+			s := 0
+			for _, g := range config.Shards {
+				if g == gid {
+					s++
+				}
+			}
+			Assert(s == x, "the number of shard is not equal to shardNums record")
+			sum += x
+		}
+		if sum != NShards {
+			DPrintf("num %v sum %v NShards %v", config.Num, sum, NShards)
+		}
+		Assert(sum == NShards || sum == 0, "the sum of shard nums is not equal to NShard or 0")
+		Assert(len(sc.shardNums) == len(config.Groups), "the number of sg is not consistent")
+	}
+
+
 	sc.configs = append(sc.configs, config)
 	DPrintf("config[%v]: Shard %v", config.Num, config.Shards)
 
