@@ -174,9 +174,11 @@ func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 	config := ConfigClone(sc.configs[sc.nextCfgIdx - 1])
 	config.Num = sc.nextCfgIdx
-	sc.nextCfgIdx++
 
 	Assert(config.Num == sc.configs[sc.nextCfgIdx - 1].Num + 1, "the config num is not increase")
+
+	sc.nextCfgIdx++
+
 	// 合并servers
 	for gid, sg := range servers {
 		_, ok := config.Groups[gid]
@@ -257,6 +259,9 @@ func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 	config := ConfigClone(sc.configs[sc.nextCfgIdx - 1])
 	config.Num = sc.nextCfgIdx
+
+	Assert(config.Num == sc.configs[sc.nextCfgIdx - 1].Num + 1, "the config num is not increase")
+
 	sc.nextCfgIdx++
 
 	for _, GID := range GIDs {
@@ -283,6 +288,9 @@ func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 func (sc *ShardCtrler) doMove(shard int, GID int) Err {
 	config := ConfigClone(sc.configs[sc.nextCfgIdx - 1])
 	config.Num = sc.nextCfgIdx
+
+	Assert(config.Num == sc.configs[sc.nextCfgIdx - 1].Num + 1, "the config num is not increase")
+
 	sc.nextCfgIdx++
 
 	old_gid := config.Shards[shard]
@@ -439,7 +447,11 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister)
 	sc.configs[0].Groups = map[int][]string{}
 
 	labgob.Register(Op{})
+	labgob.Register(JoinArgs{})
+	labgob.Register(LeaveArgs{})
+	labgob.Register(MoveArgs{})
 	labgob.Register(QueryArgs{})
+
 	sc.applyCh = make(chan raft.ApplyMsg)
 	sc.rf = raft.Make(servers, me, persister, sc.applyCh)
 
