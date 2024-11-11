@@ -85,8 +85,7 @@ func ConfigClone(origin_config Config) Config {
 	config.Groups = make(map[int][]string)
 
 	for gid, arr := range origin_config.Groups {
-		config.Groups[gid] = make([]string, 0)
-		copy(config.Groups[gid], arr)
+		config.Groups[gid] = append([]string(nil), arr...)
 	}
 	copy(config.Shards[:], origin_config.Shards[:])
 
@@ -256,6 +255,8 @@ func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 	}
 
 	sc.configs = append(sc.configs, config)
+	Assert(config.Num == len(sc.configs) - 1, "Wrong Num")
+
 	DPrintf("config[%v]: Shard %v", config.Num, config.Shards)
 
 	return OK
@@ -310,6 +311,8 @@ func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 
 
 	sc.configs = append(sc.configs, config)
+	Assert(config.Num == len(sc.configs) - 1, "Wrong Num")
+
 	DPrintf("config[%v]: Shard %v", config.Num, config.Shards)
 
 
@@ -330,6 +333,7 @@ func (sc *ShardCtrler) doMove(shard int, GID int) Err {
 	config.Shards[shard] = GID
 
 	sc.configs = append(sc.configs, config)
+	Assert(config.Num == len(sc.configs) - 1, "Wrong Num")
 	DPrintf("config[%v]: Shard %v", config.Num, config.Shards)
 
 
@@ -338,13 +342,14 @@ func (sc *ShardCtrler) doMove(shard int, GID int) Err {
 
 
 func (sc *ShardCtrler) doQuery(num int) (Err, Config) {
-	if num == -1 {
+	if num == -1 || num >= sc.nextCfgIdx {
 		num = sc.nextCfgIdx - 1
 	}
-	if num < 0 || num >= sc.nextCfgIdx {
+	if num < 0 {
 		return ErrNoExist, Config{}
 	}
-	DPrintf("config[%v]: Shard %v", sc.configs[num].Num, sc.configs[num].Shards)
+	Assert(num == sc.configs[num].Num, "num is not consistent")
+	DPrintf("config[%v]: Num %v Shard %v", num, sc.configs[num].Num, sc.configs[num].Shards)
 
 	return OK, sc.configs[num]
 }
