@@ -9,10 +9,12 @@ import (
     "6.5840/labgob"
 	"log"
 	"time"
+	"reflect"
+	"sort"
 )
 
 
-const Debug = false
+const Debug = true
 const Delay = 400
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
@@ -48,6 +50,7 @@ type ShardCtrler struct {
 
 	// 记录每个sg拥有的shard数量
 	shardNums		map[int]int
+	isEmpty			bool	
 }
 
 
@@ -65,7 +68,7 @@ const (
 type Op struct {
 	// Your data here.
 	Operation	OpType
-	Args        ReqArgs
+	Args        interface{}
 
 	ClientId 		int64
 	Seqno	 		int64
@@ -95,7 +98,7 @@ func ConfigClone(origin_config Config) Config {
 func (sc *ShardCtrler) mostShardsGID() int {
 	maxn_gid := 0
 	for i, j := range sc.shardNums {
-		if maxn_gid == 0 || j > sc.shardNums[maxn_gid] {
+		if maxn_gid == 0 || j > sc.shardNums[maxn_gid] || (j == sc.shardNums[maxn_gid] && i < maxn_gid) {
 			maxn_gid = i
 		}
 	}
@@ -110,7 +113,7 @@ func (sc *ShardCtrler) leastShardsGID(exclude int) int {
 		if i == exclude {
 			continue
 		}
-		if minn_gid == 0 || j < sc.shardNums[minn_gid] {
+		if minn_gid == 0 || j < sc.shardNums[minn_gid] || (j == sc.shardNums[minn_gid] && i < minn_gid) {
 			minn_gid = i
 		}
 	}
@@ -123,16 +126,15 @@ func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 	var cid int64
 	var seqno int64
 
-	var args = op.Args
+	var args = op.Args.(ReqArgs)
 	cid, seqno = args.GetClientId(), args.GetSeqno()
 	
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
+	_, _, isLeader := sc.Raft().Start(op)
 
-	_, _, isLeader := sc.rf.Start(op)
 
-
-	args = op.Args
+	args = op.Args.(ReqArgs)
 	cid, seqno = args.GetClientId(), args.GetSeqno()
 		
 
@@ -153,7 +155,7 @@ func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 			return ErrWrongLeader, Config{Num: -1}
 		} 
 		
-		if _, isLeader := sc.rf.GetState(); !isLeader {
+		if _, isLeader := sc.Raft().GetState(); !isLeader {
 			return ErrWrongLeader, Config{Num: -1}
 		} 
 
@@ -165,7 +167,7 @@ func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 			}
 			continue
 		} else {
-			DPrintf("[%v] Server[%v]->Client[%v]: %v reply", seqno, sc.me, cid, op.Operation)
+			DPrintf("[%v] Server[%v]->Client[%v]: %v reply err %v", seqno, sc.me, cid, op.Operation, record.Err)
 			return record.Err, record.Config
 		}
 	}
@@ -188,13 +190,25 @@ func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 		config.Groups[gid] = sg
 	}
 
-	if config.Num == 1 {
+	// 获取所有的键
+	keys := make([]int, 0, len(servers))
+	for key := range servers {
+		keys = append(keys, key)
+	}
+
+	// 按键排序
+	sort.Ints(keys)
+
+	DPrintf("Servers[%v]: Join %v", sc.me, keys)
+
+	if sc.isEmpty {
 		num_of_sg := len(servers)
 		size := NShards / num_of_sg
 		rem := NShards % num_of_sg
 		i := 0   // 第几个sg
 		start := 0  // 开始索引
-		for gid, _ := range servers {
+
+		for _, gid := range keys {
 			sc.shardNums[gid] = size
 			if i < rem {
 				sc.shardNums[gid]++
@@ -208,18 +222,18 @@ func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 		}
 		Assert(start == NShards, "start should equal to NShards")
 	} else {
-		for gid, _ := range servers {
+		for _, gid := range keys {
 			// 找出最多shard的sg
 			maxn_gid := sc.mostShardsGID()
 
 			sc.shardNums[gid] = sc.shardNums[maxn_gid] / 2
 
 			if sc.shardNums[gid] == 0 {
-				break
+				continue
 			}
-			// 分为两半给新的sg
+			// 分一半给新的sg
 			sc.shardNums[maxn_gid] -= sc.shardNums[gid]
-
+			Assert(sc.shardNums[maxn_gid] >= 0, "less than 0")
 			// 修改Shard
 			count := 0
 			for i, g := range config.Shards {
@@ -252,13 +266,24 @@ func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 			DPrintf("num %v sum %v NShards %v", config.Num, sum, NShards)
 		}
 		Assert(sum == NShards || sum == 0, "the sum of shard nums is not equal to NShard or 0")
+		if len(sc.shardNums) != len(config.Groups) {
+			DPrintf("shard Nums")
+			DPrintf("%v", servers)
+			DPrintf("%v", sc.shardNums)
+			DPrintf("%v", config.Groups)
+		}
 		Assert(len(sc.shardNums) == len(config.Groups), "the number of sg is not consistent")
+
 	}
 
 	sc.configs = append(sc.configs, config)
+	sc.isEmpty = false
 	Assert(config.Num == len(sc.configs) - 1, "Wrong Num")
 
 	DPrintf("config[%v]: Shard %v", config.Num, config.Shards)
+
+	DPrintf("=============================");
+	DPrintf("shardNum: %v", sc.shardNums)
 
 	return OK
 }
@@ -272,6 +297,12 @@ func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 
 	sc.nextCfgIdx++
 
+	// 按键排序
+	sort.Ints(GIDs)
+
+	DPrintf("Servers[%v]: Leave %v", sc.me, GIDs)
+
+
 	for _, GID := range GIDs {
 		delete(config.Groups, GID)
 		// 找到目前shard最少的SG
@@ -280,7 +311,8 @@ func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 		if minn_gid != 0 {
 			sc.shardNums[minn_gid] += sc.shardNums[GID]
 		} else {
-			DPrintf("only GID %v", GID)
+			DPrintf("only GID %v %v", GID, len(sc.shardNums))
+			DPrintf("%v", sc.shardNums)
 		}
 
 		for i, g := range config.Shards {
@@ -292,7 +324,7 @@ func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 		delete(sc.shardNums, GID)
 
 		if minn_gid == 0 {
-			Assert(len(sc.shardNums) == 0, "fuck")
+			Assert(len(sc.shardNums) == 0, "fuck minn gid")
 			DPrintf("config shards %v", config.Shards)
 		}
 	}
@@ -311,10 +343,14 @@ func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 			sum += x
 		}
 		if sum != NShards {
+			sc.isEmpty = true
 			DPrintf("num %v sum %v NShards %v", config.Num, sum, NShards)
 		}
 		Assert(sum == NShards || sum == 0, "the sum of shard nums is not equal to NShard or 0")
 		Assert(len(sc.shardNums) == len(config.Groups), "the number of sg is not consistent")
+		if sum == 0 {
+			Assert(sc.isEmpty && len(sc.shardNums) == 0, "empty assert failed")
+		}
 	}
 
 
@@ -322,6 +358,10 @@ func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 	Assert(config.Num == len(sc.configs) - 1, "Wrong Num")
 
 	DPrintf("config[%v]: Shard %v", config.Num, config.Shards)
+
+	DPrintf("=============================");
+	DPrintf("shardNum: %v", sc.shardNums)
+
 
 
 	return OK
@@ -343,17 +383,21 @@ func (sc *ShardCtrler) doMove(shard int, GID int) Err {
 	sc.configs = append(sc.configs, config)
 	Assert(config.Num == len(sc.configs) - 1, "Wrong Num")
 
+	DPrintf("=============================");
+	DPrintf("shardNum: %v", sc.shardNums)
+
+
 	return OK
 }
 
 
 func (sc *ShardCtrler) doQuery(num int) (Err, Config) {
 	DPrintf("Server[%v]: Query %v", sc.me, num)
-	if num >= sc.nextCfgIdx {
-		DPrintf("Server[%v]: Query %v > next index %v", sc.me, num, sc.nextCfgIdx)
-		return ErrWrongLeader, Config{Num: -1}
-	}
-	if num == -1 {
+	// if  {
+	// 	DPrintf("Server[%v]: Query %v > next index %v", sc.me, num, sc.nextCfgIdx)
+	// 	return ErrWrongLeader, Config{Num: -1}
+	// }
+	if num == -1 || num >= sc.nextCfgIdx {
 		DPrintf("Server[%v]: Query change num %v -> %v", sc.me, num, sc.nextCfgIdx - 1)
 		num = sc.nextCfgIdx - 1
 	}
@@ -368,25 +412,25 @@ func (sc *ShardCtrler) doQuery(num int) (Err, Config) {
 
 func (sc *ShardCtrler) Join(args *JoinArgs, reply *JoinReply) {
 	// Your code here.
-	reply.Err, _ = sc.handleReq(Op{Operation: JOIN, Args: args, ClientId: args.ClientId, Seqno: args.Seqno})
+	reply.Err, _ = sc.handleReq(Op{Operation: JOIN, Args: *args, ClientId: args.ClientId, Seqno: args.Seqno})
 	reply.WrongLeader = reply.Err == ErrWrongLeader
 }
 
 func (sc *ShardCtrler) Leave(args *LeaveArgs, reply *LeaveReply) {
 	// Your code here.
-	reply.Err, _ = sc.handleReq(Op{Operation: LEAVE, Args: args})
+	reply.Err, _ = sc.handleReq(Op{Operation: LEAVE, Args: *args})
 	reply.WrongLeader = reply.Err == ErrWrongLeader
 }
 
 func (sc *ShardCtrler) Move(args *MoveArgs, reply *MoveReply) {
 	// Your code here.
-	reply.Err, _ = sc.handleReq(Op{Operation: MOVE, Args: args})
+	reply.Err, _ = sc.handleReq(Op{Operation: MOVE, Args: *args})
 	reply.WrongLeader = reply.Err == ErrWrongLeader
 }
 
 func (sc *ShardCtrler) Query(args *QueryArgs, reply *QueryReply) {
 	// Your code here.
-	reply.Err, reply.Config = sc.handleReq(Op{Operation: QUERY, Args: args})
+	reply.Err, reply.Config = sc.handleReq(Op{Operation: QUERY, Args: *args})
 	reply.WrongLeader = reply.Err == ErrWrongLeader
 }
 
@@ -402,10 +446,12 @@ func (sc *ShardCtrler) executeLoop() {
 				if msg.CommandValid {
 					op, ok := msg.Command.(Op)
 					if !ok {
+						DPrintf("msg %v", msg)
+						DPrintf("fuck %v", reflect.TypeOf(msg.Command))
 						sc.mu.Unlock()
 						continue
 					}
-					args = op.Args
+					args = op.Args.(ReqArgs)
 					cid, seqno = args.GetClientId(), args.GetSeqno()
 		
 					if record, ok := sc.History[cid]; ok && seqno <= record.Seqno {
@@ -417,17 +463,17 @@ func (sc *ShardCtrler) executeLoop() {
 						record.Seqno = seqno
 						switch op.Operation {
 						case JOIN: {
-							record.Err = sc.doJoin(args.(*JoinArgs).Servers)
+							record.Err = sc.doJoin(args.(JoinArgs).Servers)
 						}
 						case LEAVE: {
-							record.Err = sc.doLeave(args.(*LeaveArgs).GIDs)
+							record.Err = sc.doLeave(args.(LeaveArgs).GIDs)
 						}
 						case MOVE: {
-							record.Err = sc.doMove(args.(*MoveArgs).Shard, args.(*MoveArgs).GID)
+							record.Err = sc.doMove(args.(MoveArgs).Shard, args.(MoveArgs).GID)
 						}
 						case QUERY: {
-							DPrintf("Server[%v]: Query cid %v seno %v num %v", sc.me, cid, seqno, args.(*QueryArgs).Num)
-							record.Err, record.Config = sc.doQuery(args.(*QueryArgs).Num)
+							DPrintf("Server[%v]: Query cid %v seno %v num %v", sc.me, cid, seqno, args.(QueryArgs).Num)
+							record.Err, record.Config = sc.doQuery(args.(QueryArgs).Num)
 						}
 						}
 		
@@ -437,11 +483,11 @@ func (sc *ShardCtrler) executeLoop() {
 		
 					sc.condDict[op.Operation].Broadcast()
 					Assert(sc.lastApplied < msg.CommandIndex, "apply a old command")
-					DPrintf("Server[%v]: update lastApplied to command index %v -> %v", sc.me, sc.lastApplied, msg.CommandIndex)
+					DPrintf("Server[%v]: update lastApplied to command index %v -> %v, nextidx %v", sc.me, sc.lastApplied, msg.CommandIndex, sc.nextCfgIdx)
 
 					sc.lastApplied = msg.CommandIndex
 				} else if msg.SnapshotValid {
-		
+					DPrintf("what snap")
 				}
 				sc.mu.Unlock()
 			}
@@ -467,7 +513,7 @@ func (sc *ShardCtrler) executeLoop() {
 func (sc *ShardCtrler) Kill() {
 	// 两条语句不能反过来，否则rf已经killed了但是sc还是alive的
 	atomic.StoreInt32(&sc.dead, 1)
-	sc.rf.Kill()
+	sc.Raft().Kill()
 	// Your code here, if desired.
 }
 
@@ -514,6 +560,8 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister)
 	sc.condDict[QUERY] = sync.NewCond(&sc.mu)
 
 	sc.shardNums = make(map[int]int)
+	sc.isEmpty = true
+
 	go sc.executeLoop()
     
 
