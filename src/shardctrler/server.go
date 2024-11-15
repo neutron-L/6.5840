@@ -12,7 +12,7 @@ import (
 )
 
 
-const Debug = true
+const Debug = false
 const Delay = 400
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
@@ -166,7 +166,7 @@ func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 			continue
 		} else {
 			DPrintf("[%v] Server[%v]->Client[%v]: %v reply", seqno, sc.me, cid, op.Operation)
-			return OK, record.Config
+			return record.Err, record.Config
 		}
 	}
 
@@ -237,8 +237,6 @@ func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 
 	// variant检查
 	if Debug {
-		DPrintf("Join: ")
-
 		sum := 0
 		for gid, x := range sc.shardNums {
 			s := 0
@@ -301,7 +299,6 @@ func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 
 	// variant检查
 	if Debug {
-		DPrintf("Leave: ")
 		sum := 0
 		for gid, x := range sc.shardNums {
 			s := 0
@@ -345,17 +342,19 @@ func (sc *ShardCtrler) doMove(shard int, GID int) Err {
 
 	sc.configs = append(sc.configs, config)
 	Assert(config.Num == len(sc.configs) - 1, "Wrong Num")
-	DPrintf("config[%v]: Shard %v", config.Num, config.Shards)
-
 
 	return OK
 }
 
 
 func (sc *ShardCtrler) doQuery(num int) (Err, Config) {
-	DPrintf("Query: %v", num)
-	if num == -1 || num >= sc.nextCfgIdx {
-		DPrintf("Query: change num %v -> %v", num, sc.nextCfgIdx - 1)
+	DPrintf("Server[%v]: Query %v", sc.me, num)
+	if num >= sc.nextCfgIdx {
+		DPrintf("Server[%v]: Query %v > next index %v", sc.me, num, sc.nextCfgIdx)
+		return ErrWrongLeader, Config{Num: -1}
+	}
+	if num == -1 {
+		DPrintf("Server[%v]: Query change num %v -> %v", sc.me, num, sc.nextCfgIdx - 1)
 		num = sc.nextCfgIdx - 1
 	}
 	if num < 0 {
@@ -363,7 +362,6 @@ func (sc *ShardCtrler) doQuery(num int) (Err, Config) {
 	}
 	
 	Assert(num == sc.configs[num].Num, "num is not consistent")
-	DPrintf("config[%v]: Num %v Shard %v", num, sc.configs[num].Num, sc.configs[num].Shards)
 
 	return OK, sc.configs[num]
 }
@@ -428,6 +426,7 @@ func (sc *ShardCtrler) executeLoop() {
 							record.Err = sc.doMove(args.(*MoveArgs).Shard, args.(*MoveArgs).GID)
 						}
 						case QUERY: {
+							DPrintf("Server[%v]: Query cid %v seno %v num %v", sc.me, cid, seqno, args.(*QueryArgs).Num)
 							record.Err, record.Config = sc.doQuery(args.(*QueryArgs).Num)
 						}
 						}
