@@ -297,9 +297,6 @@ func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 
 	sc.nextCfgIdx++
 
-	// 按键排序
-	sort.Ints(GIDs)
-
 	DPrintf("Servers[%v]: Leave %v", sc.me, GIDs)
 
 
