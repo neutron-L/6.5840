@@ -14,7 +14,7 @@ import (
 )
 
 
-const Debug = true
+const Debug = false
 const Delay = 400
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
@@ -125,15 +125,13 @@ func (sc *ShardCtrler) leastShardsGID(exclude int) int {
 func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 	var cid int64
 	var seqno int64
-
-	DPrintf("reflect type %v", reflect.TypeOf(op.Args))
-
 	var args = op.Args.(ReqArgs)
 
 	cid, seqno = args.GetClientId(), args.GetSeqno()
 	
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
+
 	_, _, isLeader := sc.Raft().Start(op)
 
 	if !isLeader {
@@ -185,6 +183,9 @@ func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 	for gid, sg := range servers {
 		_, ok := config.Groups[gid]
 		Assert(!ok, "Duplicate server group")
+		if gid >= 1 && gid <= 3 {
+			DPrintf("Join %v", gid)
+		}
 		config.Groups[gid] = sg
 	}
 
@@ -303,6 +304,9 @@ func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 
 
 	for _, GID := range GIDs {
+		if GID >= 1 && GID <= 3 {
+			DPrintf("Leave %v", GID)
+		}
 		delete(config.Groups, GID)
 		// 找到目前shard最少的SG
 		minn_gid := sc.leastShardsGID(GID)
@@ -323,7 +327,11 @@ func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 		delete(sc.shardNums, GID)
 
 		if minn_gid == 0 {
-			Assert(len(sc.shardNums) == 0, "fuck minn gid")
+			sc.isEmpty = true
+			if len(sc.shardNums) != 0 {
+				DPrintf("%v", sc.shardNums)
+				Assert(false, "fuck minn gid")
+			}
 			DPrintf("config shards %v", config.Shards)
 		}
 	}
