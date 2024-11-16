@@ -68,7 +68,7 @@ const (
 type Op struct {
 	// Your data here.
 	Operation	OpType
-	Args        interface{}
+	Args        ReqArgs
 
 	ClientId 		int64
 	Seqno	 		int64
@@ -126,17 +126,15 @@ func (sc *ShardCtrler) handleReq(op Op) (Err, Config) {
 	var cid int64
 	var seqno int64
 
+	DPrintf("reflect type %v", reflect.TypeOf(op.Args))
+
 	var args = op.Args.(ReqArgs)
+
 	cid, seqno = args.GetClientId(), args.GetSeqno()
 	
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 	_, _, isLeader := sc.Raft().Start(op)
-
-
-	args = op.Args.(ReqArgs)
-	cid, seqno = args.GetClientId(), args.GetSeqno()
-		
 
 	if !isLeader {
 		DPrintf("[%v] Server[%v]->Client[%v]: got %v not leader", seqno, sc.me, cid, op.Operation)
@@ -280,10 +278,11 @@ func (sc *ShardCtrler) doJoin(servers map[int][]string) Err {
 	sc.isEmpty = false
 	Assert(config.Num == len(sc.configs) - 1, "Wrong Num")
 
-	DPrintf("config[%v]: Shard %v", config.Num, config.Shards)
 
 	DPrintf("=============================");
 	DPrintf("shardNum: %v", sc.shardNums)
+	DPrintf("config[%v]: Shard %v %v", config.Num, config.Shards, config.Groups)
+
 
 	return OK
 }
@@ -357,12 +356,9 @@ func (sc *ShardCtrler) doLeave(GIDs []int) Err {
 	sc.configs = append(sc.configs, config)
 	Assert(config.Num == len(sc.configs) - 1, "Wrong Num")
 
-	DPrintf("config[%v]: Shard %v", config.Num, config.Shards)
-
 	DPrintf("=============================");
 	DPrintf("shardNum: %v", sc.shardNums)
-
-
+	DPrintf("config[%v]: Shard %v %v", config.Num, config.Shards, config.Groups)
 
 	return OK
 }
@@ -385,7 +381,7 @@ func (sc *ShardCtrler) doMove(shard int, GID int) Err {
 
 	DPrintf("=============================");
 	DPrintf("shardNum: %v", sc.shardNums)
-
+	DPrintf("config[%v]: Shard %v %v", config.Num, config.Shards, config.Groups)
 
 	return OK
 }
@@ -412,25 +408,25 @@ func (sc *ShardCtrler) doQuery(num int) (Err, Config) {
 
 func (sc *ShardCtrler) Join(args *JoinArgs, reply *JoinReply) {
 	// Your code here.
-	reply.Err, _ = sc.handleReq(Op{Operation: JOIN, Args: *args, ClientId: args.ClientId, Seqno: args.Seqno})
+	reply.Err, _ = sc.handleReq(Op{Operation: JOIN, Args: args, ClientId: args.ClientId, Seqno: args.Seqno})
 	reply.WrongLeader = reply.Err == ErrWrongLeader
 }
 
 func (sc *ShardCtrler) Leave(args *LeaveArgs, reply *LeaveReply) {
 	// Your code here.
-	reply.Err, _ = sc.handleReq(Op{Operation: LEAVE, Args: *args})
+	reply.Err, _ = sc.handleReq(Op{Operation: LEAVE, Args: args})
 	reply.WrongLeader = reply.Err == ErrWrongLeader
 }
 
 func (sc *ShardCtrler) Move(args *MoveArgs, reply *MoveReply) {
 	// Your code here.
-	reply.Err, _ = sc.handleReq(Op{Operation: MOVE, Args: *args})
+	reply.Err, _ = sc.handleReq(Op{Operation: MOVE, Args: args})
 	reply.WrongLeader = reply.Err == ErrWrongLeader
 }
 
 func (sc *ShardCtrler) Query(args *QueryArgs, reply *QueryReply) {
 	// Your code here.
-	reply.Err, reply.Config = sc.handleReq(Op{Operation: QUERY, Args: *args})
+	reply.Err, reply.Config = sc.handleReq(Op{Operation: QUERY, Args: args})
 	reply.WrongLeader = reply.Err == ErrWrongLeader
 }
 
@@ -451,7 +447,9 @@ func (sc *ShardCtrler) executeLoop() {
 						sc.mu.Unlock()
 						continue
 					}
+					DPrintf("reflect type %v", reflect.TypeOf(op.Args))
 					args = op.Args.(ReqArgs)
+
 					cid, seqno = args.GetClientId(), args.GetSeqno()
 		
 					if record, ok := sc.History[cid]; ok && seqno <= record.Seqno {
@@ -463,17 +461,17 @@ func (sc *ShardCtrler) executeLoop() {
 						record.Seqno = seqno
 						switch op.Operation {
 						case JOIN: {
-							record.Err = sc.doJoin(args.(JoinArgs).Servers)
+							record.Err = sc.doJoin(args.(*JoinArgs).Servers)
 						}
 						case LEAVE: {
-							record.Err = sc.doLeave(args.(LeaveArgs).GIDs)
+							record.Err = sc.doLeave(args.(*LeaveArgs).GIDs)
 						}
 						case MOVE: {
-							record.Err = sc.doMove(args.(MoveArgs).Shard, args.(MoveArgs).GID)
+							record.Err = sc.doMove(args.(*MoveArgs).Shard, args.(*MoveArgs).GID)
 						}
 						case QUERY: {
-							DPrintf("Server[%v]: Query cid %v seno %v num %v", sc.me, cid, seqno, args.(QueryArgs).Num)
-							record.Err, record.Config = sc.doQuery(args.(QueryArgs).Num)
+							DPrintf("Server[%v]: Query cid %v seno %v num %v", sc.me, cid, seqno, args.(*QueryArgs).Num)
+							record.Err, record.Config = sc.doQuery(args.(*QueryArgs).Num)
 						}
 						}
 		
@@ -542,10 +540,10 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister)
 	sc.configs[0].Groups = map[int][]string{}
 
 	labgob.Register(Op{})
-	labgob.Register(JoinArgs{})
-	labgob.Register(LeaveArgs{})
-	labgob.Register(MoveArgs{})
-	labgob.Register(QueryArgs{})
+	labgob.Register(&JoinArgs{})
+	labgob.Register(&LeaveArgs{})
+	labgob.Register(&MoveArgs{})
+	labgob.Register(&QueryArgs{})
 
 	sc.applyCh = make(chan raft.ApplyMsg)
 	sc.rf = raft.Make(servers, me, persister, sc.applyCh)
